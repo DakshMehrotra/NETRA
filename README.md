@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚦 NETRA
+#  NETRA : Next-Gen Emergency Traffic Response Architecture
 ### Network-Enabled Traffic Routing & Analysis
 
 **A smart traffic perception system that sees the road, thinks in graphs, and moves emergencies through in real time.**
