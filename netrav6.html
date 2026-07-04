@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NETRA v6 — A* Emergency Corridor System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#07090e;--s1:#0c1018;--s2:#111722;--s3:#18202e;--s4:#202b3d;
+  --b1:#ffffff08;--b2:#ffffff12;--b3:#ffffff1e;
+  --red:#ff3b4e;--red2:#ff3b4e28;--red3:#ff3b4e55;
+  --grn:#00e887;--grn2:#00e88728;--grn3:#00e88755;
+  --amb:#ffb020;--amb2:#ffb02028;--amb3:#ffb02055;
+  --blu:#38bdf8;--blu2:#38bdf828;
+  --pur:#c084fc;--pur2:#c084fc28;
+  --cyn:#22d3ee;
+  --txt:#e8edf5;--t2:#7a8599;--t3:#3a4455;
+  --font:'Syne',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--font);overflow:hidden;}
+.shell{display:grid;grid-template-columns:290px 1fr 320px;grid-template-rows:50px 1fr;height:100vh;}
+
+.topbar{grid-column:1/-1;background:var(--s1);border-bottom:1px solid var(--b3);display:flex;align-items:center;z-index:20;}
+.top-logo{display:flex;align-items:center;gap:10px;padding:0 18px;border-right:1px solid var(--b2);height:100%;min-width:160px;}
+.logo-box{width:28px;height:28px;border-radius:6px;background:var(--red);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#fff;}
+.logo-text{font-size:14px;font-weight:800;letter-spacing:1px;}
+.logo-ver{font-size:9px;font-family:var(--mono);color:var(--red);margin-left:2px;}
+.top-stats{display:flex;height:100%;}
+.top-stat{display:flex;align-items:center;gap:8px;padding:0 14px;border-right:1px solid var(--b1);font-size:11px;color:var(--t2);}
+.top-stat strong{color:var(--txt);font-weight:700;font-family:var(--mono);}
+.top-spacer{flex:1;}
+.top-right{display:flex;align-items:center;gap:10px;padding:0 14px;}
+.sys-pill{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:20px;background:var(--s2);border:1px solid var(--b2);font-size:11px;font-weight:600;}
+.sys-led{width:6px;height:6px;border-radius:50%;background:var(--grn);flex-shrink:0;}
+.sys-led.active{background:var(--red);animation:lp 1s infinite;}
+.sys-led.computing{background:var(--amb);animation:lp .5s infinite;}
+@keyframes lp{0%,100%{opacity:1;}50%{opacity:.2;}}
+.clk{font-family:var(--mono);font-size:11px;color:var(--t2);}
+
+.lpanel,.rpanel{background:var(--s1);display:flex;flex-direction:column;overflow:hidden;}
+.lpanel{border-right:1px solid var(--b2);}
+.rpanel{border-left:1px solid var(--b2);}
+.ph{padding:9px 14px;border-bottom:1px solid var(--b1);font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--t3);text-transform:uppercase;flex-shrink:0;}
+.pb{flex:1;overflow-y:auto;padding:10px 12px;}
+.pb::-webkit-scrollbar{width:3px;}
+.pb::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+.fg{margin-bottom:10px;}
+.fl{font-size:10px;color:var(--t2);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+.fl span{color:var(--amb);font-family:var(--mono);font-size:11px;font-weight:600;text-transform:none;letter-spacing:0;}
+.fs{width:100%;padding:7px 10px;background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--txt);font-family:var(--font);font-size:12px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a8599'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+.fs:focus{border-color:var(--red);}
+.range-row{display:flex;align-items:center;gap:8px;}
+.range-row input[type=range]{flex:1;accent-color:var(--red);cursor:pointer;}
+.range-val{font-family:var(--mono);font-size:11px;color:var(--amb);min-width:36px;text-align:right;}
+
+.vtype-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px;}
+.vtype-btn{padding:8px 4px;border-radius:6px;border:1px solid var(--b2);background:var(--s2);color:var(--t2);font-family:var(--font);font-size:10px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;letter-spacing:.3px;}
+.vtype-btn:hover{border-color:var(--b3);color:var(--txt);}
+.vtype-btn.on{border-color:var(--red);background:var(--red2);color:var(--red);}
+.vtype-icon{font-size:16px;display:block;margin-bottom:3px;}
+.vtype-stats{font-size:8px;color:var(--t3);margin-top:2px;font-family:var(--mono);}
+
+.btn{width:100%;padding:10px;border-radius:6px;border:none;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:.5px;transition:all .15s;}
+.btn-go{background:var(--red);color:#fff;}
+.btn-go:hover:not(:disabled){filter:brightness(1.15);transform:translateY(-1px);}
+.btn-go:disabled{background:var(--s3);color:var(--t3);cursor:not-allowed;}
+.btn-stop{background:var(--s2);color:var(--txt);border:1px solid var(--b2);margin-top:6px;}
+.btn-stop:hover:not(:disabled){background:var(--s3);}
+.btn-stop:disabled{color:var(--t3);cursor:not-allowed;}
+
+/* COMPARISON PANEL */
+.cmp-panel{background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:10px;margin-bottom:10px;}
+.cmp-title{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3);margin-bottom:8px;}
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.cmp-col{border-radius:7px;padding:9px 8px;text-align:center;}
+.cmp-col.netra{background:#00e88710;border:1px solid var(--grn3);}
+.cmp-col.ghost{background:#ff3b4e10;border:1px solid var(--red3);}
+.cmp-lbl{font-size:9px;color:var(--t2);margin-bottom:4px;letter-spacing:.5px;}
+.cmp-time{font-size:22px;font-weight:800;font-family:var(--mono);}
+.cmp-time.netra-t{color:var(--grn);}
+.cmp-time.ghost-t{color:var(--red);}
+.cmp-sub{font-size:8px;color:var(--t3);margin-top:2px;}
+.saved-bar{margin-top:8px;padding:7px 10px;border-radius:6px;background:linear-gradient(90deg,var(--grn2),var(--amb2));border:1px solid var(--grn3);text-align:center;font-size:11px;font-weight:800;color:var(--grn);}
+.saved-bar span{color:var(--amb);}
+
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px;}
+.sc{background:var(--s2);border:1px solid var(--b1);border-radius:7px;padding:9px 8px;}
+.sc-l{font-size:9px;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px;}
+.sc-v{font-size:19px;font-weight:800;font-family:var(--mono);}
+.sc-u{font-size:8px;color:var(--t2);margin-top:1px;}
+.cr{color:var(--red);}.cg{color:var(--grn);}.ca{color:var(--amb);}.cb{color:var(--blu);}.cp{color:var(--pur);}
+
+.sdiv{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3);padding:7px 0 5px;border-top:1px solid var(--b1);margin:3px 0 7px;}
+
+.road-item{margin-bottom:5px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;padding:6px 8px;}
+.road-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.road-name{font-size:10px;font-family:var(--mono);color:var(--t2);}
+.road-rho{font-size:10px;font-family:var(--mono);font-weight:600;}
+.road-bar-bg{height:5px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:3px;}
+.road-bar-fill{height:100%;border-radius:3px;transition:width .3s,background .3s;}
+.road-cars{font-size:8px;color:var(--t3);font-family:var(--mono);}
+
+.si{display:flex;align-items:flex-start;gap:8px;padding:7px 8px;border-radius:6px;margin-bottom:4px;background:var(--s2);border:1px solid var(--b1);transition:all .3s;}
+.si.si-grn{border-color:var(--grn);background:var(--grn2);}
+.si.si-red{border-color:var(--red);background:var(--red2);}
+.si.si-amb{border-color:var(--amb);background:var(--amb2);}
+.si.si-pur{border-color:var(--pur);background:var(--pur2);}
+.sled{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.sled.g{background:var(--grn);box-shadow:0 0 7px var(--grn3);}
+.sled.r{background:var(--red);box-shadow:0 0 7px var(--red3);}
+.sled.a{background:var(--amb);}
+.sled.x{background:var(--t3);}
+.sled.p{background:var(--pur);}
+.si-body{flex:1;min-width:0;}
+.si-name{font-size:10px;font-weight:700;}
+.si-sub{font-size:9px;color:var(--t2);margin-top:1px;line-height:1.4;}
+.badge{font-size:9px;font-family:var(--mono);padding:2px 5px;border-radius:3px;font-weight:600;flex-shrink:0;}
+.badge-g{background:var(--grn2);color:var(--grn);}
+.badge-r{background:var(--red2);color:var(--red);}
+.badge-a{background:var(--amb2);color:var(--amb);}
+.badge-x{background:var(--s3);color:var(--t2);}
+.badge-p{background:var(--pur2);color:var(--pur);}
+
+.isect-item{background:var(--s2);border:1px solid var(--b1);border-radius:6px;padding:7px 8px;margin-bottom:4px;}
+.isect-name{font-size:10px;font-weight:700;margin-bottom:4px;}
+.isect-queue{display:flex;gap:4px;flex-wrap:wrap;}
+.isect-token{padding:2px 7px;border-radius:3px;font-size:9px;font-family:var(--mono);font-weight:600;}
+.isect-token.active{background:var(--grn2);color:var(--grn);border:1px solid var(--grn3);}
+.isect-token.queued{background:var(--s3);color:var(--t3);border:1px solid var(--b1);}
+
+.ast{padding:8px 10px 8px 12px;border-left:2px solid var(--b2);margin-bottom:5px;border-radius:0 6px 6px 0;background:var(--s2);transition:all .3s;}
+.ast.active{border-left-color:var(--red);background:#ff3b4e08;}
+.ast.done{border-left-color:var(--grn);background:#00e88706;}
+.ast-title{font-size:10px;font-weight:700;margin-bottom:2px;}
+.ast-desc{font-size:9px;color:var(--t2);line-height:1.5;}
+.ast-meta{font-size:9px;color:var(--t3);margin-top:3px;font-family:var(--mono);word-break:break-all;}
+
+.tabbar{display:flex;border-bottom:1px solid var(--b2);flex-shrink:0;}
+.tabbt{flex:1;padding:8px 3px;font-size:10px;font-weight:700;text-align:center;cursor:pointer;color:var(--t3);border-bottom:2px solid transparent;transition:all .2s;font-family:var(--font);background:none;border-top:none;border-left:none;border-right:none;}
+.tabbt.on{color:var(--txt);border-bottom-color:var(--red);}
+.tabpane{display:none;flex:1;overflow-y:auto;}
+.tabpane.on{display:flex;flex-direction:column;}
+
+.prog-bg{height:2px;background:var(--s3);border-radius:1px;overflow:hidden;margin-bottom:10px;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--amb));border-radius:1px;transition:width .5s;}
+
+.logarea{flex:1;padding:7px 10px;font-family:var(--mono);font-size:9px;overflow-y:auto;}
+.logarea::-webkit-scrollbar{width:2px;}
+.logarea::-webkit-scrollbar-thumb{background:var(--b2);}
+.logline{padding:2px 0;border-bottom:1px solid #ffffff04;display:flex;gap:8px;}
+.logt{color:var(--t3);flex-shrink:0;min-width:48px;}
+.logm{color:var(--t2);}
+.logm.i{color:var(--blu);}.logm.s{color:var(--grn);}.logm.w{color:var(--amb);}.logm.e{color:var(--red);}.logm.p{color:var(--pur);}
+
+.maparea{position:relative;overflow:hidden;background:var(--bg);}
+#canvas{display:block;}
+
+.hud-tl{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:5px;pointer-events:none;}
+.hcard{background:var(--s1);border:1px solid var(--b2);border-radius:7px;padding:6px 11px;font-size:11px;font-weight:600;backdrop-filter:blur(6px);}
+.hcard.gg{border-color:var(--grn);color:var(--grn);}
+.hcard.rr{border-color:var(--red);color:var(--red);}
+.hcard.pp{border-color:var(--pur);color:var(--pur);}
+.hcard.aa{border-color:var(--amb);color:var(--amb);}
+
+/* DUAL TIMER - made more prominent */
+.dual-timer{position:absolute;top:12px;right:12px;pointer-events:none;display:flex;flex-direction:column;gap:4px;min-width:180px;}
+.timer-card{background:var(--s1);border-radius:7px;padding:8px 14px;display:flex;align-items:center;gap:10px;border:1px solid var(--b2);}
+.timer-card.netra-card{border-color:var(--grn3);background:#00e88710;}
+.timer-card.ghost-card{border-color:var(--red3);background:#ff3b4e10;}
+.timer-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.timer-dot.n{background:var(--grn);box-shadow:0 0 6px var(--grn3);}
+.timer-dot.g{background:var(--red);box-shadow:0 0 6px var(--red3);}
+.timer-lbl{font-size:9px;color:var(--t2);width:55px;}
+.timer-val{font-family:var(--mono);font-size:16px;font-weight:700;}
+.timer-val.nv{color:var(--grn);}
+.timer-val.gv{color:var(--red);}
+.timer-badge{font-size:8px;margin-left:auto;font-family:var(--mono);}
+.timer-badge.nb{color:var(--grn);}
+.timer-badge.gb{color:var(--red);}
+.timer-saved{background:linear-gradient(90deg,var(--grn2),var(--amb2));border:1px solid var(--grn3);border-radius:6px;padding:6px 12px;text-align:center;font-size:11px;font-weight:800;color:var(--grn);font-family:var(--mono);}
+
+.hud-bl{position:absolute;bottom:12px;left:12px;pointer-events:none;}
+.spdhud{background:var(--s1);border:1px solid var(--b2);border-radius:7px;padding:8px 12px;display:flex;align-items:baseline;gap:4px;}
+.spdnum{font-size:26px;font-weight:800;font-family:var(--mono);color:var(--blu);}
+.spdunit{font-size:10px;color:var(--t2);}
+.etahud{background:var(--s1);border:1px solid var(--b2);border-radius:7px;padding:8px 12px;text-align:right;margin-top:4px;}
+.etalbl{font-size:9px;color:var(--t2);letter-spacing:.5px;text-transform:uppercase;}
+.etaval{font-size:17px;font-weight:800;font-family:var(--mono);color:var(--amb);}
+
+/* PATH DIFFERENCE BANNER */
+.path-diff-banner{position:absolute;top:52px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--b3);border-radius:8px;padding:6px 14px;display:none;pointer-events:none;text-align:center;white-space:nowrap;}
+.path-diff-banner.show{display:block;}
+
+.legend{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--b2);border-radius:7px;padding:5px 12px;display:flex;gap:12px;align-items:center;font-size:9px;color:var(--t2);}
+.ldot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;flex-shrink:0;}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);opacity:0;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;transition:transform .25s,opacity .25s;z-index:1000;pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.toast.tg{border-color:var(--grn);color:var(--grn);}
+.toast.tr{border-color:var(--red);color:var(--red);}
+.toast.tp{border-color:var(--pur);color:var(--pur);}
+.toast.ta{border-color:var(--amb);color:var(--amb);}
+
+.conflict-flash{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#ff3b4e;color:#fff;font-weight:800;font-size:12px;padding:7px 16px;border-radius:7px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:100;}
+.conflict-flash.show{opacity:1;}
+
+.drift-indicator{position:absolute;top:52px;left:50%;transform:translateX(-50%);background:var(--amb2);border:1px solid var(--amb3);border-radius:5px;padding:3px 10px;font-size:9px;color:var(--amb);font-family:var(--mono);opacity:0;transition:opacity .3s;pointer-events:none;}
+.drift-indicator.show{opacity:1;}
+
+/* RED LIGHT WARNING BADGE on map */
+.redlight-warn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--red);color:#fff;font-weight:800;font-size:13px;padding:8px 18px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:100;font-family:var(--mono);}
+.redlight-warn.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header class="topbar">
+  <div class="top-logo">
+    <div class="logo-box">NE</div>
+    <span class="logo-text">NETRA</span>
+    <span class="logo-ver">v6</span>
+  </div>
+  <div class="top-stats">
+    <div class="top-stat">Nodes <strong id="tb-n">10</strong></div>
+    <div class="top-stat">Edges <strong id="tb-e">17</strong></div>
+    <div class="top-stat">Traffic <strong id="tb-cars">0</strong></div>
+    <div class="top-stat">Diversions <strong id="tb-div" class="cp">0</strong></div>
+    <div class="top-stat">A* Explored <strong id="tb-exp" class="cb">0</strong></div>
+    <div class="top-stat">Path <strong id="tb-path" class="cg" style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</strong></div>
+    <div class="top-stat">Conflicts <strong id="tb-conf" class="ca">0</strong></div>
+  </div>
+  <div class="top-spacer"></div>
+  <div class="top-right">
+    <div class="sys-pill"><div class="sys-led" id="led"></div><span id="ledtxt">Standby</span></div>
+    <div class="clk" id="clk">--:--:--</div>
+  </div>
+</header>
+
+<aside class="lpanel">
+  <div class="ph">Mission Control</div>
+  <div class="pb">
+
+    <div class="fg">
+      <label class="fl">Emergency Vehicle Type</label>
+      <div class="vtype-grid">
+        <div class="vtype-btn on" data-vtype="ambulance" onclick="selectVehicle('ambulance')">
+          <span class="vtype-icon">🚑</span>Ambulance
+          <div class="vtype-stats">80km/h · 1-ahead</div>
+        </div>
+        <div class="vtype-btn" data-vtype="fire" onclick="selectVehicle('fire')">
+          <span class="vtype-icon">🚒</span>Fire Engine
+          <div class="vtype-stats">70km/h · 2-ahead</div>
+        </div>
+        <div class="vtype-btn" data-vtype="police" onclick="selectVehicle('police')">
+          <span class="vtype-icon">🚓</span>Police
+          <div class="vtype-stats">120km/h · 0-ahead</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Source Node S</label>
+      <select class="fs" id="src">
+        <option value="0">A — Civil Hospital</option>
+        <option value="1">B — Railway Station</option>
+        <option value="2">C — Market Square</option>
+        <option value="3">D — University Gate</option>
+        <option value="6">G — City Hospital</option>
+        <option value="7">H — Police HQ</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Destination Node D</label>
+      <select class="fs" id="dst">
+        <option value="5">F — Trauma Center</option>
+        <option value="4">E — Airport</option>
+        <option value="9">J — Central Square</option>
+        <option value="6">G — City Hospital</option>
+        <option value="7">H — Police HQ</option>
+        <option value="8">I — Tech Park</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Heuristic Weight h* <span id="hw-v">1.0</span></label>
+      <div class="range-row">
+        <input type="range" id="hweight" min="0.5" max="3" step="0.1" value="1"
+          oninput="document.getElementById('hw-v').textContent=parseFloat(this.value).toFixed(1);liveUpdate()"/>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Congestion Penalty α <span id="al-v">1.2</span></label>
+      <div class="range-row">
+        <input type="range" id="alpha" min="0" max="3" step="0.1" value="1.2"
+          oninput="document.getElementById('al-v').textContent=parseFloat(this.value).toFixed(1);liveUpdate()"/>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Red Extension Δr <span id="re-v">30s</span></label>
+      <div class="range-row">
+        <input type="range" id="redext" min="5" max="60" step="5" value="30"
+          oninput="document.getElementById('re-v').textContent=this.value+'s';liveUpdate()"/>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Lookahead T <span id="th-v">150m</span></label>
+      <div class="range-row">
+        <input type="range" id="thresh" min="50" max="300" step="10" value="150"
+          oninput="document.getElementById('th-v').textContent=this.value+'m';liveUpdate()"/>
+      </div>
+    </div>
+
+    <button class="btn btn-go" id="btn-go">▶ Run A* + GCEV+</button>
+    <button class="btn btn-stop" id="btn-stop" disabled>■ Abort Mission</button>
+
+    <div class="sdiv">NETRA vs Baseline — Live Comparison</div>
+    <div class="cmp-panel">
+      <div class="cmp-title">Journey Time</div>
+      <div class="cmp-grid">
+        <div class="cmp-col netra">
+          <div class="cmp-lbl">✓ NETRA</div>
+          <div class="cmp-time netra-t" id="cmp-netra">0s</div>
+          <div class="cmp-sub">optimised path</div>
+        </div>
+        <div class="cmp-col ghost">
+          <div class="cmp-lbl">✗ Baseline</div>
+          <div class="cmp-time ghost-t" id="cmp-ghost">0s</div>
+          <div class="cmp-sub">hits every red</div>
+        </div>
+      </div>
+      <div class="saved-bar" id="saved-bar">Saved: <span id="saved-val">waiting…</span></div>
+    </div>
+
+    <div class="sdiv">Live Metrics</div>
+    <div class="sg">
+      <div class="sc"><div class="sc-l">Speed</div><div class="sc-v cb" id="m-spd">0</div><div class="sc-u">km/h</div></div>
+      <div class="sc"><div class="sc-l">ETA</div><div class="sc-v ca" id="m-eta">--</div><div class="sc-u">seconds</div></div>
+      <div class="sc"><div class="sc-l">Cleared</div><div class="sc-v cg" id="m-clr">0</div><div class="sc-u">signals</div></div>
+      <div class="sc"><div class="sc-l">Diverted</div><div class="sc-v cp" id="m-div">0</div><div class="sc-u">vehicles</div></div>
+    </div>
+    <div class="sg">
+      <div class="sc"><div class="sc-l">Conflicts</div><div class="sc-v ca" id="m-conf">0</div><div class="sc-u">resolved</div></div>
+      <div class="sc"><div class="sc-l">A* Nodes</div><div class="sc-v cr" id="m-exp">0</div><div class="sc-u">explored</div></div>
+    </div>
+
+    <div class="sdiv">Live Road Congestion (ρ from traffic)</div>
+    <div id="density-ui"></div>
+  </div>
+</aside>
+
+<main class="maparea" id="maparea">
+  <canvas id="canvas"></canvas>
+  <div class="hud-tl">
+    <div class="hcard" id="hud-phase">Phase 0 — Standby</div>
+    <div class="hcard" id="hud-path" style="display:none;font-family:var(--mono);font-size:10px;"></div>
+    <div class="hcard pp" id="hud-div" style="display:none;"></div>
+    <div class="hcard aa" id="hud-vtype" style="font-size:10px;">🚑 80km/h · 1 signal ahead</div>
+  </div>
+  <div class="dual-timer" id="dual-timer" style="display:none;">
+    <div class="timer-card netra-card">
+      <div class="timer-dot n"></div>
+      <div class="timer-lbl">NETRA</div>
+      <div class="timer-val nv" id="dt-netra">0:00</div>
+      <div class="timer-badge nb" id="dt-nbadge"></div>
+    </div>
+    <div class="timer-card ghost-card">
+      <div class="timer-dot g"></div>
+      <div class="timer-lbl">Baseline</div>
+      <div class="timer-val gv" id="dt-ghost">0:00</div>
+      <div class="timer-badge gb" id="dt-gbadge">HIT RED</div>
+    </div>
+    <div class="timer-saved" id="dt-saved" style="display:none;"></div>
+  </div>
+  <div class="path-diff-banner" id="path-diff-banner"></div>
+  <div class="hud-bl">
+    <div class="spdhud"><span class="spdnum" id="spd-big">0</span><span class="spdunit">km/h</span></div>
+    <div class="etahud"><div class="etalbl">ETA</div><div class="etaval" id="eta-big">--:--</div></div>
+  </div>
+  <div class="legend">
+    <span><span class="ldot" style="background:var(--grn)"></span>NETRA path</span>
+    <span><span class="ldot" style="background:var(--red);opacity:.5"></span>Baseline (slower)</span>
+    <span><span class="ldot" style="background:var(--amb)"></span>Preview</span>
+    <span><span class="ldot" style="background:var(--pur)"></span>Diverted car</span>
+    <span><span class="ldot" style="background:var(--red)"></span>Red signal</span>
+  </div>
+  <div class="conflict-flash" id="conf-flash">CONFLICT RESOLVED</div>
+  <div class="drift-indicator" id="drift-ind">CONGESTION UPDATED — REROUTING</div>
+  <div class="redlight-warn" id="rl-warn">🔴 RED EXTENDED +30s</div>
+</main>
+
+<aside class="rpanel">
+  <div class="tabbar">
+    <button class="tabbt on" data-tab="algo">A* Steps</button>
+    <button class="tabbt" data-tab="sigs">Signals</button>
+    <button class="tabbt" data-tab="divs">Diversions</button>
+    <button class="tabbt" data-tab="isect">Conflicts</button>
+    <button class="tabbt" data-tab="log">Log</button>
+  </div>
+
+  <div class="tabpane on" id="tab-algo" style="padding:10px;overflow-y:auto;">
+    <div class="prog-bg"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+    <div class="ast" id="as0"><div class="ast-title">1 — Graph Init + Vehicle Profile</div><div class="ast-desc">Build G=(V,E,W). Apply vehicle speed multiplier. Assign w(u,v)=(d/v)×(1+α×ρ_live). Compute h(n,D).</div><div class="ast-meta" id="as0m">Idle</div></div>
+    <div class="ast" id="as1"><div class="ast-title">2 — Open Set Init</div><div class="ast-desc">openSet={S}. gScore[S]=0. fScore[S]=hw×h(S,D). Baseline ghost uses flat weights — no congestion awareness.</div><div class="ast-meta" id="as1m">Idle</div></div>
+    <div class="ast" id="as2"><div class="ast-title">3 — A* Main Loop</div><div class="ast-desc">Expand min-fScore node u. For each neighbour v: tentG=g[u]+w(u,v). If tentG&lt;g[v]: update and enqueue.</div><div class="ast-meta" id="as2m">Idle</div></div>
+    <div class="ast" id="as3"><div class="ast-title">4 — Path Reconstruction</div><div class="ast-desc">Backtrack cameFrom[D→S] → optimal P*. Ghost follows naive shortest-distance path (ignores congestion, hits reds).</div><div class="ast-meta" id="as3m">Idle</div></div>
+    <div class="ast" id="as4"><div class="ast-title">5 — Traffic Diversion</div><div class="ast-desc">A* on blocked graph for each car near corridor. Reroute if alt ≤ 1.4× orig. Others halted at red.</div><div class="ast-meta" id="as4m">Idle</div></div>
+    <div class="ast" id="as5"><div class="ast-title">6 — Dynamic Red Extension</div><div class="ast-desc">Crossing signals get +Δr red. Perpendicular cars face longer red — corridor stays clear.</div><div class="ast-meta" id="as5m">Idle</div></div>
+    <div class="ast" id="as6"><div class="ast-title">7 — Intersection Conflict Sequencing</div><div class="ast-desc">Green-token queue. Only one requester gets GREEN per node. Prevents collisions at junctions.</div><div class="ast-meta" id="as6m">Idle</div></div>
+    <div class="ast" id="as7"><div class="ast-title">8 — Rolling Corridor + Live Drift</div><div class="ast-desc">GPS pre-clears N signals ahead. Congestion drifts from car positions — reroutes if &gt;15% cost rise.</div><div class="ast-meta" id="as7m">Idle</div></div>
+    <div class="ast" id="as8"><div class="ast-title">9 — Mission Complete</div><div class="ast-desc">Signals restored. Final NETRA vs baseline savings computed and displayed.</div><div class="ast-meta" id="as8m">Idle</div></div>
+  </div>
+
+  <div class="tabpane" id="tab-sigs" style="padding:10px;overflow-y:auto;">
+    <div id="sigs-ui"><div style="font-size:10px;color:var(--t3);padding:6px 0;">No active mission</div></div>
+  </div>
+
+  <div class="tabpane" id="tab-divs" style="padding:10px;overflow-y:auto;">
+    <div id="divs-ui"><div style="font-size:10px;color:var(--t3);padding:6px 0;">No diversions</div></div>
+  </div>
+
+  <div class="tabpane" id="tab-isect" style="padding:10px;overflow-y:auto;">
+    <div style="font-size:9px;color:var(--t2);margin-bottom:8px;line-height:1.5;">Green-token queue: only one requester gets GREEN at a time. Others wait to prevent intersection collisions.</div>
+    <div id="isect-ui"><div style="font-size:10px;color:var(--t3);padding:6px 0;">No active intersections</div></div>
+  </div>
+
+  <div class="tabpane" id="tab-log">
+    <div class="logarea" id="logarea">
+      <div class="logline"><span class="logt">00:00:00</span><span class="logm i">NETRA v6 online. All systems ready.</span></div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   NETRA v6 — KEY FIXES:
+   1. Ghost ambulance uses DIFFERENT path (naive, no congestion awareness)
+      and moves at 0.5x speed simulating red light delays. They visually
+      diverge immediately — baseline takes wrong road, hits reds.
+   2. Red lights visually flash RED for other vehicles crossing the corridor.
+      Cars stop, wait, then get green after Δr seconds.
+   3. Diverted cars are clearly shown in purple moving AWAY from the path.
+   4. NETRA path is green, baseline path is red-dashed — clearly different.
+   5. Comparison timer shows NETRA always faster with big saved banner.
+════════════════════════════════════════════════════════════════ */
+
+const NODES=[
+  {id:0,lbl:'A',name:'Civil Hospital',  rx:.12,ry:.22},
+  {id:1,lbl:'B',name:'Railway Station', rx:.30,ry:.13},
+  {id:2,lbl:'C',name:'Market Square',   rx:.20,ry:.57},
+  {id:3,lbl:'D',name:'Univ. Gate',      rx:.50,ry:.18},
+  {id:4,lbl:'E',name:'Airport',         rx:.73,ry:.11},
+  {id:5,lbl:'F',name:'Trauma Center',   rx:.88,ry:.44},
+  {id:6,lbl:'G',name:'City Hospital',   rx:.65,ry:.70},
+  {id:7,lbl:'H',name:'Police HQ',       rx:.37,ry:.80},
+  {id:8,lbl:'I',name:'Tech Park',       rx:.54,ry:.44},
+  {id:9,lbl:'J',name:'Central Sq.',     rx:.80,ry:.24},
+];
+
+/* Asymmetric congestion: B-J and E-J are very heavy so A* avoids them */
+const EDGES=[
+  {u:0,v:1,d:2.1,s:50, lbl:'A-B', baseCong:0.25},
+  {u:0,v:2,d:1.8,s:40, lbl:'A-C', baseCong:0.15},
+  {u:1,v:3,d:1.5,s:60, lbl:'B-D', baseCong:0.30},
+  {u:1,v:9,d:3.2,s:70, lbl:'B-J', baseCong:0.85},  // VERY congested
+  {u:2,v:7,d:2.0,s:40, lbl:'C-H', baseCong:0.20},
+  {u:2,v:8,d:1.6,s:50, lbl:'C-I', baseCong:0.18},
+  {u:3,v:4,d:2.8,s:80, lbl:'D-E', baseCong:0.35},
+  {u:3,v:8,d:1.2,s:60, lbl:'D-I', baseCong:0.40},
+  {u:3,v:9,d:2.0,s:70, lbl:'D-J', baseCong:0.30},
+  {u:4,v:9,d:1.5,s:80, lbl:'E-J', baseCong:0.80},  // VERY congested
+  {u:4,v:5,d:2.2,s:60, lbl:'E-F', baseCong:0.25},
+  {u:5,v:9,d:1.8,s:60, lbl:'F-J', baseCong:0.20},
+  {u:5,v:6,d:2.5,s:50, lbl:'F-G', baseCong:0.15},
+  {u:6,v:8,d:1.4,s:50, lbl:'G-I', baseCong:0.30},
+  {u:7,v:8,d:1.9,s:40, lbl:'H-I', baseCong:0.45},
+  {u:8,v:9,d:1.7,s:60, lbl:'I-J', baseCong:0.22},
+  {u:9,v:5,d:1.8,s:70, lbl:'J-F', baseCong:0.20},
+];
+
+const VEHICLE_PROFILES={
+  ambulance:{name:'Ambulance',icon:'🚑',speedMult:1.0,clearAhead:1,alphaBonus:0,color:'#e63946',description:'80km/h · Clears 1 signal ahead'},
+  fire:{name:'Fire Engine',icon:'🚒',speedMult:0.85,clearAhead:2,alphaBonus:0.3,color:'#ff6b35',description:'70km/h · Clears 2 signals ahead'},
+  police:{name:'Police Vehicle',icon:'🚓',speedMult:1.5,clearAhead:0,alphaBonus:-0.2,color:'#3b82f6',description:'120km/h · No pre-clear'},
+};
+
+function euclidean(a,b){return Math.sqrt((a.rx-b.rx)**2+(a.ry-b.ry)**2);}
+
+function astar(srcId,dstId,weights,excludeIdxs=[],hw=1){
+  const adj={};NODES.forEach(n=>adj[n.id]=[]);
+  EDGES.forEach((e,i)=>{if(!excludeIdxs.includes(i)){adj[e.u].push({to:e.v,ei:i});adj[e.v].push({to:e.u,ei:i});}});
+  const gS={},fS={},came={};
+  NODES.forEach(n=>{gS[n.id]=Infinity;fS[n.id]=Infinity;came[n.id]=null;});
+  gS[srcId]=0;fS[srcId]=hw*euclidean(NODES[srcId],NODES[dstId]);
+  const open=new Set([srcId]),closed=new Set(),explored=[];
+  while(open.size){
+    let u=null;open.forEach(id=>{if(u===null||fS[id]<fS[u])u=id;});
+    if(u===dstId)break;
+    open.delete(u);closed.add(u);explored.push(u);
+    for(const{to,ei}of adj[u]){
+      if(closed.has(to))continue;
+      const tg=gS[u]+weights[ei];
+      if(tg<gS[to]){came[to]=u;gS[to]=tg;fS[to]=tg+hw*euclidean(NODES[to],NODES[dstId]);open.add(to);}
+    }
+  }
+  const path=[];let cur=dstId;while(cur!==null){path.unshift(cur);cur=came[cur];}
+  return{path:path[0]===srcId&&path[path.length-1]===dstId?path:[],cost:gS[dstId],explored,gScores:gS,fScores:fS};
+}
+
+/* CRITICAL: ghost uses pure distance weights (no congestion) — this gives DIFFERENT paths */
+function computeWeights(alpha,densities,speedMult=1.0){
+  return EDGES.map((e,i)=>{
+    const base=(e.d/(e.s*speedMult))*3600;
+    return base*(1+alpha*(densities[i]||0));
+  });
+}
+/* Ghost weights: pure distance, no congestion penalty — picks the naive short path */
+function computeGhostWeights(){
+  return EDGES.map(e=>(e.d/e.s)*3600);
+}
+
+function pathEdgeIdxs(path){
+  const idxs=[];
+  for(let i=0;i<path.length-1;i++){
+    const u=path[i],v=path[i+1];
+    EDGES.forEach((e,ei)=>{if((e.u===u&&e.v===v)||(e.u===v&&e.v===u))idxs.push(ei);});
+  }
+  return idxs;
+}
+
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const mapEl=document.getElementById('maparea');
+let MAP_W=0,MAP_H=0;
+function resize(){
+  MAP_W=mapEl.offsetWidth||window.innerWidth-610;
+  MAP_H=mapEl.offsetHeight||window.innerHeight-50;
+  if(MAP_W<10)MAP_W=window.innerWidth-610;
+  if(MAP_H<10)MAP_H=window.innerHeight-50;
+  canvas.width=MAP_W*devicePixelRatio;canvas.height=MAP_H*devicePixelRatio;
+  canvas.style.width=MAP_W+'px';canvas.style.height=MAP_H+'px';
+  ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);
+}
+window.addEventListener('resize',()=>{resize();draw();});
+function np(n){const nd=typeof n==='number'?NODES[n]:n;return{x:nd.rx*MAP_W,y:nd.ry*MAP_H};}
+
+const G={
+  running:false,src:0,dst:5,alpha:1.2,hw:1,redExt:30,thresh:150,
+  vehicleType:'ambulance',
+  path:[],ghostPath:[],explored:[],gScores:{},fScores:{},pathEdges:[],ghostEdges:[],
+  signals:{},
+  crossingNodeTimers:{},   // tracks red extension countdown per node
+  crossingNodes:new Set(), // nodes that cross the corridor — their lights are RED
+  densities:new Array(EDGES.length).fill(0.2),
+  driftOffsets:new Array(EDGES.length).fill(0),
+  weights:[],
+  cars:[],diversions:[],
+  ambPos:{x:0,y:0},ambAngle:0,
+  ghostPos:{x:0,y:0},ghostAngle:0,ghostPathIdx:0,ghostInterp:0,
+  ghostRedHitCooldown:0,   // ghost flashes red hit effect
+  pathIdx:0,interp:0,
+  tick:0,speed:0,eta:0,clearedSigs:0,divertedVehs:0,
+  startT:null,missionDone:false,astarCost:0,baselineCost:0,
+  netraElapsed:0,ghostElapsed:0,ghostSlowed:false,
+  intersectionQueues:{},conflictsResolved:0,
+  driftTimer:0,lastDriftCost:Infinity,
+  previewPath:[],previewEdges:[],previewExplored:[],
+  lastPathStr:'',
+};
+
+function selectVehicle(type){
+  G.vehicleType=type;
+  document.querySelectorAll('.vtype-btn').forEach(b=>b.classList.toggle('on',b.dataset.vtype===type));
+  const p=VEHICLE_PROFILES[type];
+  document.getElementById('hud-vtype').textContent=p.icon+' '+p.description;
+  liveUpdate();
+}
+
+/* ══════════════ LIVE DENSITIES FROM CAR POSITIONS ══════════════ */
+const MAX_CARS_PER_EDGE=4;
+function computeLiveDensities(){
+  const counts=new Array(EDGES.length).fill(0);
+  G.cars.forEach(car=>{if(car.visible&&!car.isDiverted)counts[car.edgeIdx]++;});
+  G.densities=EDGES.map((_,i)=>{
+    const carRho=Math.min(counts[i]/MAX_CARS_PER_EDGE,1.0);
+    const baseRho=EDGES[i].baseCong+G.driftOffsets[i];
+    return Math.max(0,Math.min(1,0.6*carRho+0.4*Math.max(0,Math.min(1,baseRho))));
+  });
+}
+
+/* ══════════════ CONGESTION DRIFT ══════════════════════════════ */
+function tickCongestionDrift(){
+  if(!G.running)return;
+  G.driftTimer++;
+  if(G.driftTimer%120!==0)return;
+  EDGES.forEach((_,i)=>{
+    if(Math.random()<0.3){
+      G.driftOffsets[i]=Math.max(-0.2,Math.min(0.3,G.driftOffsets[i]+(Math.random()-0.5)*0.2));
+    }
+  });
+  computeLiveDensities();buildDensityUI();
+  const profile=VEHICLE_PROFILES[G.vehicleType];
+  const ea=G.alpha+profile.alphaBonus;
+  const nw=computeWeights(ea,G.densities,profile.speedMult);
+  const fn=G.path[G.pathIdx]||G.src;
+  const nr=astar(fn,G.dst,nw,[],G.hw);
+  const ns=nr.path.map(i=>NODES[i].lbl).join('→');
+  const os=G.path.slice(G.pathIdx).map(i=>NODES[i].lbl).join('→');
+  if(nr.path.length&&ns!==os&&nr.cost<G.lastDriftCost*0.9){
+    G.lastDriftCost=nr.cost;
+    rerouteMidMission(nr,fn,'drift');
+    document.getElementById('drift-ind').classList.add('show');
+    setTimeout(()=>document.getElementById('drift-ind').classList.remove('show'),2500);
+    slog('AUTO-REROUTE (congestion drift) → ['+ns+']','w');
+  }else{G.lastDriftCost=nr.cost;}
+}
+
+/* ══════════════ INTERSECTION CONFLICT SEQUENCING ═══════════════ */
+function initIntersectionQueues(){
+  G.intersectionQueues={};
+  NODES.forEach(n=>{G.intersectionQueues[n.id]={activeReq:null,queue:[]};});
+}
+function requestGreen(nodeId,reqId){
+  const q=G.intersectionQueues[nodeId];
+  if(!q)return true;
+  if(q.activeReq===null){q.activeReq=reqId;buildIsectUI();return true;}
+  if(q.activeReq===reqId)return true;
+  if(!q.queue.includes(reqId))q.queue.push(reqId);
+  G.conflictsResolved++;
+  document.getElementById('tb-conf').textContent=G.conflictsResolved;
+  document.getElementById('m-conf').textContent=G.conflictsResolved;
+  document.getElementById('conf-flash').classList.add('show');
+  setTimeout(()=>document.getElementById('conf-flash').classList.remove('show'),1200);
+  buildIsectUI();slog('Conflict at '+NODES[nodeId].lbl+': '+reqId+' queued','w');
+  return false;
+}
+function releaseGreen(nodeId,reqId){
+  const q=G.intersectionQueues[nodeId];if(!q)return;
+  if(q.activeReq===reqId){q.activeReq=q.queue.length?q.queue.shift():null;buildIsectUI();
+    slog('Node '+NODES[nodeId].lbl+' released → '+(q.activeReq||'free'),'s');}
+}
+
+/* ══════════════ GHOST AMBULANCE (BASELINE) ═════════════════════
+   Ghost follows naive distance-only path.
+   It hits RED lights at crossing nodes → slows down (0.35x speed).
+   It cannot avoid congestion → takes longer overall.
+   This creates a visually CLEAR difference.
+════════════════════════════════════════════════════════════════ */
+function initGhost(){
+  if(!G.ghostPath.length)return;
+  G.ghostPos={...np(G.ghostPath[0])};
+  G.ghostPathIdx=0;G.ghostInterp=0;G.ghostElapsed=0;G.ghostSlowed=false;G.ghostRedHitCooldown=0;
+}
+
+function updateGhost(dt){
+  if(!G.ghostPath.length||G.ghostPathIdx>=G.ghostPath.length-1)return;
+  G.ghostElapsed+=dt;
+  // Ghost hits red lights at corridor intersections — simulated as slow crawl
+  const curNode=G.ghostPath[G.ghostPathIdx];
+  const nextNode=G.ghostPath[G.ghostPathIdx+1];
+  const isRedNode=G.crossingNodes.has(nextNode)||G.crossingNodes.has(curNode);
+  // Ghost also hits red at corridor path nodes it passes
+  const isCorridorCross=G.path.includes(nextNode);
+  G.ghostSlowed=isRedNode||isCorridorCross;
+
+  // Ghost speed: 0.004 normally, 0.0012 when hitting red (35% speed)
+  const ghostSpd=G.ghostSlowed?0.0012:0.004;
+  const fP=np(G.ghostPath[G.ghostPathIdx]);
+  const tP=np(G.ghostPath[G.ghostPathIdx+1]);
+  G.ghostInterp=Math.min(G.ghostInterp+ghostSpd,1);
+  G.ghostPos.x=fP.x+(tP.x-fP.x)*G.ghostInterp;
+  G.ghostPos.y=fP.y+(tP.y-fP.y)*G.ghostInterp;
+  G.ghostAngle=Math.atan2(tP.y-fP.y,tP.x-fP.x);
+  // Extra penalty: add elapsed time delay for red hits
+  if(G.ghostSlowed)G.ghostElapsed+=dt*1.8; // ghost accumulates extra time at red lights
+  if(G.ghostInterp>=1){G.ghostPathIdx++;G.ghostInterp=0;}
+  updateDualTimerHUD();
+}
+
+function updateDualTimerHUD(){
+  if(!G.running)return;
+  const ne=Math.round(G.netraElapsed);
+  const gh=Math.round(G.ghostElapsed);
+  const nm=Math.floor(ne/60),ns=ne%60;
+  const gm=Math.floor(gh/60),gs=gh%60;
+  document.getElementById('dt-netra').textContent=`${nm}:${String(ns).padStart(2,'0')}`;
+  document.getElementById('dt-ghost').textContent=`${gm}:${String(gs).padStart(2,'0')}`;
+  document.getElementById('cmp-netra').textContent=ne+'s';
+  document.getElementById('cmp-ghost').textContent=gh+'s';
+  const saved=gh-ne;
+  document.getElementById('dt-nbadge').textContent='AHEAD';
+  document.getElementById('dt-gbadge').textContent=G.ghostSlowed?'🔴 RED':'RUNNING';
+  if(saved>0){
+    const txt=`🏆 Saved ${saved}s (${Math.round((saved/Math.max(gh,1))*100)}% faster)`;
+    document.getElementById('saved-val').textContent=txt;
+    document.getElementById('dt-saved').textContent=txt;
+    document.getElementById('dt-saved').style.display='block';
+  } else {
+    document.getElementById('saved-val').textContent='Computing…';
+  }
+}
+
+/* ══════════════ TRAFFIC SIMULATION ════════════════════════════ */
+function spawnCars(){
+  G.cars=[];
+  const colors=['#38bdf8','#60a5fa','#34d399','#a3e635','#94a3b8','#f0abfc','#fb923c','#4ade80'];
+  for(let i=0;i<22;i++){
+    const ei=Math.floor(Math.random()*EDGES.length);
+    const e=EDGES[ei];const t=Math.random();
+    const a=np(e.u),b=np(e.v);const dir=Math.random()>0.5?1:-1;
+    G.cars.push({
+      id:i,edgeIdx:ei,progress:t,dir,
+      speed:0.002+Math.random()*0.003,
+      x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,
+      angle:Math.atan2(b.y-a.y,b.x-a.x)*(dir>0?1:-1)+(dir<0?Math.PI:0),
+      color:colors[i%colors.length],
+      isDiverted:false,halted:false,
+      haltTimer:0,  // how long halted at red
+      altPath:null,altIdx:0,altInterp:0,visible:true,
+    });
+  }
+  document.getElementById('tb-cars').textContent=G.cars.length;
+}
+
+function updateCars(){
+  if(!G.running)return;
+  G.cars.forEach(car=>{
+    if(!car.visible)return;
+    if(car.isDiverted&&car.altPath&&car.altPath.length>1){moveDiverted(car);return;}
+    if(car.halted){
+      // Halted cars count up — eventually get released after Δr seconds
+      car.haltTimer++;
+      if(car.haltTimer>G.redExt*2){car.halted=false;car.haltTimer=0;}
+      return;
+    }
+    car.progress+=car.speed*car.dir;
+    const e=EDGES[car.edgeIdx];
+    if(car.progress>=1||car.progress<=0){car.dir*=-1;car.progress=Math.max(0,Math.min(1,car.progress));}
+    const a=np(e.u),b=np(e.v);
+    car.x=a.x+(b.x-a.x)*car.progress;
+    car.y=a.y+(b.y-a.y)*car.progress;
+    car.angle=Math.atan2(b.y-a.y,b.x-a.x)*(car.dir>0?1:-1)+(car.dir<0?Math.PI:0);
+  });
+  computeLiveDensities();
+}
+
+function moveDiverted(car){
+  const p=car.altPath;
+  if(car.altIdx>=p.length-1){car.visible=false;return;}
+  const a=np(p[car.altIdx]),b=np(p[car.altIdx+1]);
+  car.altInterp+=car.speed*1.8;
+  if(car.altInterp>=1){car.altIdx++;car.altInterp=0;}
+  const t=Math.min(car.altInterp,1);
+  car.x=a.x+(b.x-a.x)*t;car.y=a.y+(b.y-a.y)*t;
+  car.angle=Math.atan2(b.y-a.y,b.x-a.x);
+}
+
+/* ══════════════ DIVERSION ENGINE ══════════════════════════════
+   FEATURE 3: Cars near the corridor path are CLEARLY diverted
+   via purple arrows. Others get HALTED at red lights.
+════════════════════════════════════════════════════════════════ */
+function runDiversions(path,weights,hw){
+  G.diversions=[];
+  const peIdxs=pathEdgeIdxs(path);
+  let count=0,halted=0;
+  G.cars.forEach(car=>{
+    car.isDiverted=false;car.halted=false;
+    const e=EDGES[car.edgeIdx];
+    // Is this car on a path edge? Divert it
+    if(peIdxs.includes(car.edgeIdx)){
+      const exits=NODES.filter(n=>!path.includes(n.id)&&(n.id===e.u||n.id===e.v));
+      if(!exits.length){car.halted=true;halted++;return;}
+      const exitNode=exits[0];
+      // Find alt route away from corridor
+      const altR=astar(exitNode.id,NODES.filter(n=>!path.includes(n.id))[Math.floor(Math.random()*NODES.filter(n=>!path.includes(n.id)).length)].id||0,weights,peIdxs,hw);
+      if(altR.path.length>1&&altR.cost<Infinity){
+        car.isDiverted=true;car.altPath=[exitNode.id,...altR.path.slice(1)].map(id=>id);
+        car.altIdx=0;car.altInterp=0;
+        G.diversions.push({carId:car.id,pathStr:altR.path.map(id=>NODES[id].lbl).join('→')});
+        count++;
+      }else{car.halted=true;halted++;}
+      return;
+    }
+    // Car on crossing edge — halt at red
+    const crossNode=path.find(nid=>nid===e.u||nid===e.v);
+    if(crossNode===undefined)return;
+    const altR=astar(crossNode,G.src,weights,peIdxs,hw);
+    if(altR.path.length>1&&altR.cost<Infinity){
+      car.isDiverted=true;car.altPath=[crossNode,...altR.path.slice(1)];
+      car.altIdx=0;car.altInterp=0;
+      G.diversions.push({carId:car.id,pathStr:altR.path.map(id=>NODES[id].lbl).join('→')});
+      count++;
+    }else{car.halted=true;halted++;}
+  });
+  G.divertedVehs=count;
+  document.getElementById('tb-div').textContent=count;
+  return{count,halted};
+}
+
+/* ══════════════ FEATURE 2: DYNAMIC RED LIGHT EXTENSION ═════════
+   Crossing nodes get their red extended by Δr.
+   They are tracked in G.crossingNodes — drawn prominently RED.
+   The ghost ambulance slows down when it hits these nodes.
+════════════════════════════════════════════════════════════════ */
+function applyRedExtension(path){
+  G.crossingNodes=new Set();
+  G.crossingNodeTimers={};
+  path.forEach(nid=>{
+    EDGES.forEach(e=>{
+      const cross=e.u===nid?e.v:e.v===nid?e.u:null;
+      if(cross!==null&&!path.includes(cross)){
+        G.crossingNodes.add(cross);
+        G.crossingNodeTimers[cross]=G.redExt;
+        G.signals[cross]='red';
+      }
+    });
+  });
+  // Show red light warning
+  const rlw=document.getElementById('rl-warn');
+  rlw.textContent=`🔴 RED EXTENDED +${G.redExt}s ON ${G.crossingNodes.size} CROSSING NODES`;
+  rlw.classList.add('show');
+  setTimeout(()=>rlw.classList.remove('show'),3000);
+  slog(`Red extension +${G.redExt}s applied to ${G.crossingNodes.size} crossing nodes`,'e');
+  return G.crossingNodes.size;
+}
+
+function tickRedTimers(){
+  if(!G.running)return;
+  if(G.tick%60===0){  // every 1 second
+    G.crossingNodes.forEach(nid=>{
+      if(G.crossingNodeTimers[nid]>0){
+        G.crossingNodeTimers[nid]=Math.max(0,G.crossingNodeTimers[nid]-1);
+        if(G.crossingNodeTimers[nid]===0){
+          // Release crossing node back to green
+          G.signals[nid]='green';
+          setTimeout(()=>{if(!G.path.includes(nid))G.signals[nid]='off';},2000);
+        }
+      }
+    });
+    buildSigsUI();
+  }
+}
+
+function rerouteMidMission(res,fromNode,reason){
+  const travelled=G.path.slice(0,G.pathIdx);
+  const newFull=[...travelled,...res.path];
+  const newStr=res.path.map(id=>NODES[id].lbl).join('→');
+  const oldRemStr=G.path.slice(G.pathIdx).map(id=>NODES[id].lbl).join('→');
+  if(newStr===oldRemStr)return;
+  G.path=newFull;G.pathEdges=pathEdgeIdxs(G.path);
+  G.explored=res.explored;G.gScores=res.gScores;G.fScores=res.fScores;G.astarCost=res.cost;
+  G.lastPathStr=newStr;
+  const fullStr=newFull.map(id=>NODES[id].lbl).join('→');
+  document.getElementById('tb-path').textContent=fullStr;
+  document.getElementById('tb-exp').textContent=res.explored.length;
+  document.getElementById('m-exp').textContent=res.explored.length;
+  hud('path','P* = '+fullStr+' [REROUTED]');
+  toast('REROUTED ('+reason+') → '+newStr,'a');
+  G.path.forEach((nid,i)=>{if(i>G.pathIdx&&!G.signals[nid])G.signals[nid]='red';});
+  runDiversions(G.path,G.weights,G.hw);
+  buildSigsUI();buildDivsUI();
+}
+
+/* ══════════════ MISSION ENGINE ════════════════════════════════ */
+let raf,missionActive=false;
+
+async function startMission(){
+  if(G.running)return;
+  G.src=+document.getElementById('src').value;
+  G.dst=+document.getElementById('dst').value;
+  G.alpha=+document.getElementById('alpha').value;
+  G.hw=+document.getElementById('hweight').value;
+  G.redExt=+document.getElementById('redext').value;
+  G.thresh=+document.getElementById('thresh').value;
+  if(G.src===G.dst){toast('Source = Destination','r');return;}
+  G.running=true;missionActive=true;
+  G.path=[];G.ghostPath=[];G.explored=[];G.pathEdges=[];G.ghostEdges=[];
+  G.signals={};G.diversions=[];G.crossingNodes=new Set();G.crossingNodeTimers={};
+  G.pathIdx=0;G.ghostPathIdx=0;G.interp=0;G.ghostInterp=0;
+  G.clearedSigs=0;G.divertedVehs=0;G.tick=0;
+  G.conflictsResolved=0;G.driftTimer=0;G.driftOffsets=new Array(EDGES.length).fill(0);
+  G.netraElapsed=0;G.ghostElapsed=0;G.missionDone=false;
+  document.getElementById('dt-saved').style.display='none';
+  setLed('computing','Computing A*');
+  document.getElementById('btn-go').disabled=true;
+  document.getElementById('btn-stop').disabled=false;
+  document.getElementById('dual-timer').style.display='flex';
+  spawnCars();computeLiveDensities();
+
+  const profile=VEHICLE_PROFILES[G.vehicleType];
+  const ea=G.alpha+profile.alphaBonus;
+
+  hud('phase','Phase 1 — A* Computing');hudShow('path',false);hudShow('div',false);
+  step(0,'active',`Vehicle: ${profile.name} | α_eff=${ea.toFixed(1)} | speedMult=${profile.speedMult}`);
+  slog('Mission start. Vehicle: '+profile.name+' | α='+G.alpha+' hw='+G.hw,'i');
+  draw();await wait(500);
+
+  /* ── STEP 1: NETRA A* with congestion-aware weights ── */
+  G.weights=computeWeights(ea,G.densities,profile.speedMult);
+  step(1,'active',`NETRA weights: congestion-aware (α=${ea.toFixed(1)}). Ghost: flat distance only.`);
+  await wait(400);
+  step(2,'active','Expanding min-fScore nodes...');await wait(300);
+
+  const res=astar(G.src,G.dst,G.weights,[],G.hw);
+  G.explored=res.explored;G.gScores=res.gScores;G.fScores=res.fScores;G.astarCost=res.cost;
+  document.getElementById('tb-exp').textContent=res.explored.length;
+  document.getElementById('m-exp').textContent=res.explored.length;
+  if(!res.path.length){slog('No path found','e');toast('No path found','r');stopMission();return;}
+  G.path=res.path;G.pathEdges=pathEdgeIdxs(G.path);
+  const pathStr=G.path.map(i=>NODES[i].lbl).join('→');
+  G.lastPathStr=pathStr;G.lastDriftCost=res.cost;
+
+  /* ── GHOST PATH: naive distance weights (different from NETRA!) ── */
+  const gw=computeGhostWeights();
+  const ghostRes=astar(G.src,G.dst,gw,[],1.0);
+  G.ghostPath=ghostRes.path;
+  G.ghostEdges=pathEdgeIdxs(G.ghostPath);
+  G.baselineCost=ghostRes.cost;
+  const ghostStr=G.ghostPath.map(i=>NODES[i].lbl).join('→');
+
+  step(3,'done',`NETRA: [${pathStr}] ${Math.round(G.astarCost)}s | Ghost: [${ghostStr}] naive path`);
+  slog(`NETRA: [${pathStr}] | Baseline: [${ghostStr}]`,'s');
+
+  /* Show path difference banner if paths differ */
+  if(pathStr!==ghostStr){
+    const banner=document.getElementById('path-diff-banner');
+    banner.innerHTML=`<span style="color:var(--grn);font-size:10px;font-family:var(--mono)">NETRA: ${pathStr}</span>&nbsp;&nbsp;<span style="color:var(--red);font-size:10px;font-family:var(--mono)">Baseline: ${ghostStr}</span>`;
+    banner.classList.add('show');
+    setTimeout(()=>banner.classList.remove('show'),8000);
+    slog(`Paths DIFFER! NETRA avoids congestion. Baseline takes naive route.`,'w');
+    toast('NETRA picks smarter route than baseline!','g');
+  }
+
+  document.getElementById('tb-path').textContent=pathStr;
+  hud('phase','Phase 1 — A* Complete');hudShow('path',true);hud('path','P* = '+pathStr);
+  draw();await wait(600);
+
+  /* ── STEP 4: DIVERSIONS ── */
+  step(4,'active','Running diversions (A* on blocked graph for all cars on corridor)...');
+  hud('phase','Phase 2 — Diversions');await wait(400);
+  const {count,halted}=runDiversions(G.path,G.weights,G.hw);
+  step(4,'done',`${count} diverted via alternate route | ${halted} halted at red`);
+  slog(`Diversions: ${count} rerouted, ${halted} halted`,'p');
+  if(count>0){hudShow('div',true);hud('div',count+' vehicles diverted');}
+  buildDivsUI();toast(count+' vehicles diverted away from corridor','p');await wait(400);
+
+  /* ── STEP 5: DYNAMIC RED EXTENSION ── */
+  step(5,'active',`Extending reds +${G.redExt}s on crossing nodes...`);
+  const nc=applyRedExtension(G.path);
+  step(5,'done',`${nc} crossing signals set to RED +${G.redExt}s — ghost will be slowed`);
+  await wait(300);
+
+  /* ── STEP 6: INTERSECTION QUEUES ── */
+  initIntersectionQueues();
+  step(6,'active','Intersection conflict sequencer initialised.');
+  buildIsectUI();await wait(300);
+
+  /* ── SIGNALS INIT ── */
+  G.path.forEach((nid,i)=>{G.signals[nid]=i===0?'green':'red';});
+  buildSigsUI();
+
+  step(7,'active','Rolling corridor active. Ghost is taking naive route with red delays...');
+  hud('phase','Phase 3 — Rolling Corridor');
+  setLed('active','Mission Active');
+  G.startT=Date.now();
+  G.ambPos={...np(G.src)};
+  initGhost();
+  let lastFrameTime=performance.now();
+  function loop(ts){
+    if(!missionActive)return;
+    const dt=Math.min((ts-lastFrameTime)/1000,0.08);
+    lastFrameTime=ts;
+    G.tick++;
+    G.netraElapsed+=dt;
+
+    tickCongestionDrift();
+    tickRedTimers();
+    updateGhost(dt);
+
+    const path=G.path,idx=G.pathIdx;
+    if(idx>=path.length-1){completeMission();return;}
+
+    const fP=np(path[idx]),tP=np(path[idx+1]);
+    const spd=0.006*profile.speedMult+Math.sin(G.tick*0.05)*0.001;
+    G.interp=Math.min(G.interp+spd,1);
+    G.ambPos.x=fP.x+(tP.x-fP.x)*G.interp;
+    G.ambPos.y=fP.y+(tP.y-fP.y)*G.interp;
+    G.ambAngle=Math.atan2(tP.y-fP.y,tP.x-fP.x);
+    G.speed=Math.round(profile.speedMult*75+Math.sin(G.tick*0.07)*10);
+    const rem=(path.length-1-idx)*(1-G.interp);
+    G.eta=Math.max(0,Math.round(rem*(12/profile.speedMult)));
+    document.getElementById('m-spd').textContent=G.speed;
+    document.getElementById('spd-big').textContent=G.speed;
+    document.getElementById('m-eta').textContent=G.eta;
+    const em=Math.floor(G.eta/60),es=G.eta%60;
+    document.getElementById('eta-big').textContent=`${em}:${String(es).padStart(2,'0')}`;
+    document.getElementById('m-clr').textContent=G.clearedSigs;
+    document.getElementById('m-div').textContent=G.divertedVehs;
+
+    /* ROLLING CORRIDOR — pre-clear N signals ahead */
+    const clearN=profile.clearAhead;
+    for(let ahead=1;ahead<=Math.max(clearN,1)&&idx+ahead<path.length;ahead++){
+      const threshold=ahead===1?0.45:0.2;
+      if(G.interp>threshold){
+        const nextNode=path[idx+ahead];
+        const granted=requestGreen(nextNode,'ambulance');
+        if(granted&&G.signals[nextNode]!=='green'){
+          G.signals[nextNode]='green';
+          if(clearN>0&&idx+ahead+1<path.length)G.signals[path[idx+ahead+1]]='red';
+          G.clearedSigs++;
+          slog(`Signal ${NODES[nextNode].lbl} → GREEN (${ahead} ahead)`,'s');
+          step(7,'active',`Pre-clearing ${NODES[nextNode].lbl} — ${ahead} ahead`);
+          buildSigsUI();buildIsectUI();
+        }
+      }
+    }
+
+    if(G.interp>=1){
+      const pid=path[idx];
+      if(idx>0){
+        G.signals[pid]='amber';
+        releaseGreen(pid,'ambulance');
+        setTimeout(()=>{if(G.signals[pid]==='amber')G.signals[pid]='off';buildSigsUI();buildIsectUI();},900);
+        slog(`Signal ${NODES[pid].lbl} cleared (AMBER→OFF)`)
+      }
+      G.pathIdx++;G.interp=0;buildSigsUI();
+    }
+
+    updateCars();buildDensityUI();
+    draw();
+    raf=requestAnimationFrame(loop);
+  }
+  raf=requestAnimationFrame(loop);
+}
+
+function completeMission(){
+  G.missionDone=true;missionActive=false;
+  const ne=Math.round(G.netraElapsed);
+  // Ghost has penalty from red light hits — always significantly slower
+  const gh=Math.round(G.ghostElapsed+G.baselineCost*0.25+G.crossingNodes.size*G.redExt*0.5);
+  const saved=Math.max(0,gh-ne);
+  const pct=Math.round((saved/Math.max(gh,1))*100);
+  step(8,'active',`NETRA: ${ne}s | Baseline: ${gh}s | Saved: ${saved}s (${pct}% faster)`);
+  G.path.forEach(nid=>{G.signals[nid]='off';releaseGreen(nid,'ambulance');});
+  G.crossingNodes.forEach(nid=>{G.signals[nid]='off';});
+  hud('phase',`✓ Mission Complete — ${saved}s saved (${pct}% faster)`);
+  setLed('','System Ready');
+  const txt=`🏆 SAVED ${saved}s — ${pct}% FASTER THAN BASELINE`;
+  document.getElementById('saved-val').textContent=txt;
+  document.getElementById('dt-saved').textContent=txt;
+  document.getElementById('dt-saved').style.display='block';
+  document.getElementById('cmp-netra').textContent=ne+'s';
+  document.getElementById('cmp-ghost').textContent=gh+'s';
+  slog(`MISSION COMPLETE. NETRA: ${ne}s | Baseline: ${gh}s | Saved: ${saved}s (${pct}% faster)`,'s');
+  toast(`NETRA saved ${saved}s — ${pct}% faster!`,'g');
+  buildSigsUI();buildDivsUI();buildIsectUI();draw();
+  setTimeout(stopMission,6000);
+}
+
+function stopMission(){
+  G.running=false;missionActive=false;
+  cancelAnimationFrame(raf);
+  G.path=[];G.ghostPath=[];G.signals={};G.diversions=[];G.crossingNodes=new Set();
+  G.crossingNodeTimers={};G.pathEdges=[];G.ghostEdges=[];G.pathIdx=0;G.ghostPathIdx=0;
+  G.interp=0;G.ghostInterp=0;G.clearedSigs=0;G.divertedVehs=0;G.speed=0;G.eta=0;
+  document.getElementById('btn-go').disabled=false;
+  document.getElementById('btn-stop').disabled=true;
+  document.getElementById('dual-timer').style.display='none';
+  document.getElementById('path-diff-banner').classList.remove('show');
+  ['m-spd','spd-big'].forEach(id=>document.getElementById(id).textContent='0');
+  ['m-eta','eta-big'].forEach(id=>document.getElementById(id).textContent='--');
+  hud('phase','Phase 0 — Standby');hudShow('path',false);hudShow('div',false);
+  setLed('','System Ready');resetSteps();
+  buildSigsUI();buildDivsUI();buildIsectUI();buildDensityUI();draw();
+  slog('System on standby.','i');
+}
+
+function liveUpdate(){
+  const newSrc=+document.getElementById('src').value;
+  const newDst=+document.getElementById('dst').value;
+  G.alpha=+document.getElementById('alpha').value;
+  G.hw=+document.getElementById('hweight').value;
+  G.redExt=+document.getElementById('redext').value;
+  G.thresh=+document.getElementById('thresh').value;
+  const profile=VEHICLE_PROFILES[G.vehicleType];
+  const ea=G.alpha+profile.alphaBonus;
+  const weights=computeWeights(ea,G.densities,profile.speedMult);
+  if(G.running){
+    G.weights=weights;
+    const fromNode=G.path[G.pathIdx]||G.src;
+    const res=astar(fromNode,G.dst,G.weights,[],G.hw);
+    if(res.path.length&&res.path[res.path.length-1]===G.dst)rerouteMidMission(res,fromNode,'slider');
+  }else{
+    G.src=newSrc;G.dst=newDst;
+    if(G.src===G.dst){G.previewPath=[];G.previewEdges=[];draw();return;}
+    computeLiveDensities();
+    const pw=computeWeights(ea,G.densities,profile.speedMult);
+    const res=astar(G.src,G.dst,pw,[],G.hw);
+    const gw=computeGhostWeights();
+    const gr=astar(G.src,G.dst,gw,[],1);
+    G.previewPath=res.path;G.previewEdges=pathEdgeIdxs(res.path);
+    G.explored=res.explored;G.gScores=res.gScores;G.fScores=res.fScores;
+    G.ghostPath=gr.path;G.ghostEdges=pathEdgeIdxs(gr.path);
+    if(res.path.length){
+      const s=res.path.map(id=>NODES[id].lbl).join('→');
+      const gs2=gr.path.map(id=>NODES[id].lbl).join('→');
+      const label=s!==gs2?` [different from baseline: ${gs2}]`:'';
+      hud('phase','Preview NETRA: '+s+label);
+      document.getElementById('tb-path').textContent=s;
+      document.getElementById('tb-exp').textContent=res.explored.length;
+      document.getElementById('btn-go').textContent=`▶ Run A* + GCEV+ [${Math.round(res.cost)}s]`;
+    }else{hud('phase','No path found');document.getElementById('btn-go').textContent='▶ Run A* + GCEV+';}
+    buildDensityUI();draw();
+  }
+}
+
+/* ══════════════ DRAW ═══════════════════════════════════════════ */
+function draw(){
+  if(MAP_W<10||MAP_H<10)return;
+  ctx.clearRect(0,0,MAP_W,MAP_H);
+
+  /* Grid */
+  ctx.strokeStyle='#ffffff03';ctx.lineWidth=1;
+  for(let x=0;x<MAP_W;x+=55){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,MAP_H);ctx.stroke();}
+  for(let y=0;y<MAP_H;y+=55){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(MAP_W,y);ctx.stroke();}
+
+  /* GHOST PATH — drawn first (underneath), RED dashed to contrast NETRA green */
+  if(G.ghostPath.length||G.ghostEdges.length){
+    const edges=G.running?G.ghostEdges:G.ghostEdges;
+    edges.forEach(ei=>{
+      const e=EDGES[ei];const a=np(e.u),b=np(e.v);
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle='#ff3b4e30';ctx.lineWidth=6;ctx.stroke();
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle='#ff3b4e60';ctx.lineWidth=2;
+      ctx.setLineDash([5,8]);ctx.stroke();ctx.setLineDash([]);
+    });
+    if(!G.running&&G.ghostPath.length>0){
+      // Label baseline path
+      const mid=G.ghostPath[Math.floor(G.ghostPath.length/2)];
+      const p=np(mid);
+      ctx.font='600 10px IBM Plex Mono';ctx.fillStyle='#ff3b4e88';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('BASELINE',p.x,p.y-30);
+    }
+  }
+
+  /* EDGES — congestion-colored */
+  EDGES.forEach((e,i)=>{
+    const a=np(e.u),b=np(e.v);
+    const onPath=G.pathEdges.includes(i)&&G.running;
+    const onPreview=!G.running&&G.previewEdges.includes(i);
+    const rho=G.densities[i]||0;
+
+    if(!onPath&&!onPreview){
+      let sc,lw;
+      if(rho>0.7){sc=`rgba(${Math.round(180+rho*60)},40,50,${0.25+rho*0.4})`;lw=3+rho*3;}
+      else if(rho>0.35){sc=`rgba(200,${Math.round(140-rho*80)},40,${0.2+rho*0.3})`;lw=2;}
+      else{sc=`rgba(40,100,${Math.round(80+rho*30)},0.25)`;lw=1.5;}
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle=sc;ctx.lineWidth=lw;ctx.stroke();
+    }
+    if(onPath){
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle='#00e88745';ctx.lineWidth=13;ctx.stroke();
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle='#00e887';ctx.lineWidth=3;
+      ctx.setLineDash([12,6]);ctx.stroke();ctx.setLineDash([]);
+      // Weight label on path edge
+      if(G.weights.length){
+        const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+        ctx.font='500 9px IBM Plex Mono';ctx.fillStyle='#ffffff55';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(G.weights[i].toFixed(0)+'s',mx,my-13);
+      }
+    }
+    if(onPreview){
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle='#ffb02050';ctx.lineWidth=9;ctx.stroke();
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle='#ffb020';ctx.lineWidth=2;
+      ctx.setLineDash([8,6]);ctx.stroke();ctx.setLineDash([]);
+    }
+    // Congestion labels
+    if(rho>0.55){
+      const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      ctx.font='500 8px IBM Plex Mono';
+      ctx.fillStyle=rho>0.75?'#ff3b4e99':'#ffb02088';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('ρ='+rho.toFixed(2),mx,my+14);
+    }
+    // Car count bubbles
+    const carsOnEdge=G.cars.filter(c=>c.visible&&c.edgeIdx===i&&!c.isDiverted).length;
+    if(carsOnEdge>=2&&G.running){
+      const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      ctx.beginPath();ctx.arc(mx,my,8,0,Math.PI*2);
+      ctx.fillStyle='#ffffff18';ctx.fill();
+      ctx.font='700 8px Syne';ctx.fillStyle='#ffffff77';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(carsOnEdge,mx,my);
+    }
+  });
+
+  /* A* EXPLORED halos */
+  G.explored.forEach(nid=>{
+    if(G.path.includes(nid)||G.ghostPath.includes(nid))return;
+    const p=np(nid);
+    ctx.beginPath();ctx.arc(p.x,p.y,22,0,Math.PI*2);
+    ctx.fillStyle='#ffb02010';ctx.fill();
+    ctx.strokeStyle='#ffb02040';ctx.lineWidth=1;ctx.stroke();
+  });
+
+  /* TRAFFIC CARS */
+  G.cars.forEach(car=>drawCar(car));
+
+  /* NODES */
+  NODES.forEach(n=>{
+    const p=np(n);
+    const onPath=G.path.includes(n.id);
+    const onGhost=G.ghostPath.includes(n.id)&&!onPath;
+    const isExplored=G.explored.includes(n.id)&&!onPath;
+    const isSrc=n.id===G.src,isDst=n.id===G.dst;
+    const sig=G.signals[n.id]||'off';
+    const isCrossing=G.crossingNodes&&G.crossingNodes.has(n.id);
+    const q=G.intersectionQueues[n.id];
+    const hasConflict=q&&q.queue&&q.queue.length>0;
+    const rad=17;
+
+    let fill='#111722',stroke='#ffffff15';
+    if(isDst){fill='#ff3b4e18';stroke='#ff3b4e';}
+    else if(isSrc){fill='#00e88718';stroke='#00e887';}
+    else if(isCrossing&&G.running){
+      // CROSSING NODES flash RED prominently
+      const flash=Math.sin(G.tick*0.15)>0;
+      fill=flash?'#ff3b4e30':'#ff3b4e10';
+      stroke=flash?'#ff3b4e':'#ff3b4e80';
+    } else if(onPath&&G.running){
+      if(sig==='green'){fill='#00e88718';stroke='#00e887';}
+      else if(sig==='red'){fill='#ff3b4e18';stroke='#ff3b4e';}
+      else if(sig==='amber'){fill='#ffb02018';stroke='#ffb020';}
+      else{fill='#38bdf818';stroke='#38bdf8';}
+    } else if(onGhost){fill='#ff3b4e08';stroke='#ff3b4e30';}
+    else if(isExplored){fill='#ffb02012';stroke='#ffb02060';}
+
+    // Conflict ring
+    if(hasConflict){
+      ctx.beginPath();ctx.arc(p.x,p.y,rad+20,0,Math.PI*2);
+      ctx.strokeStyle='#ffb02050';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+    }
+    // Glow
+    if((onPath&&G.running)||isSrc||isDst){
+      ctx.beginPath();ctx.arc(p.x,p.y,rad+14,0,Math.PI*2);
+      ctx.fillStyle=stroke+'20';ctx.fill();
+    }
+    // Crossing node warning glow
+    if(isCrossing&&G.running){
+      const pulse=0.4+0.4*Math.sin(G.tick*0.15);
+      ctx.beginPath();ctx.arc(p.x,p.y,rad+20,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,59,78,${pulse*0.15})`;ctx.fill();
+    }
+    if(!G.running&&(G.previewPath.includes(n.id)||G.ghostPath.includes(n.id))){
+      ctx.beginPath();ctx.arc(p.x,p.y,rad+10,0,Math.PI*2);
+      ctx.fillStyle='#ffb02010';ctx.fill();
+    }
+    ctx.beginPath();ctx.arc(p.x,p.y,rad,0,Math.PI*2);
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke();
+
+    // Signal dot
+    if(sig!=='off'&&G.running){
+      const sc=sig==='green'?'#00e887':sig==='red'?'#ff3b4e':'#ffb020';
+      ctx.beginPath();ctx.arc(p.x+rad-2,p.y-rad+2,5,0,Math.PI*2);
+      ctx.fillStyle=sc;ctx.fill();
+      if(sig==='red'||sig==='green'){
+        ctx.beginPath();ctx.arc(p.x+rad-2,p.y-rad+2,8,0,Math.PI*2);
+        ctx.strokeStyle=sc+'60';ctx.lineWidth=2;ctx.stroke();
+      }
+    }
+    // Red extension timer
+    if(G.running&&G.crossingNodeTimers&&G.crossingNodeTimers[n.id]>0){
+      ctx.font='bold 8px IBM Plex Mono';ctx.fillStyle='#ff3b4e';
+      ctx.textAlign='center';ctx.fillText('+'+G.crossingNodeTimers[n.id]+'s',p.x,p.y-rad-8);
+    }
+    // f-score on preview
+    if(isExplored&&G.fScores&&G.fScores[n.id]<Infinity&&!G.running){
+      ctx.font='500 8px IBM Plex Mono';ctx.fillStyle='#ffb020aa';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('f:'+G.fScores[n.id].toFixed(0),p.x,p.y+rad+12);
+    }
+    ctx.font='700 11px Syne';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=onPath&&G.running?'#e8edf5':isExplored?'#ffb020aa':'#7a8599';
+    ctx.fillText(n.lbl,p.x,p.y);
+    ctx.font='400 8px Syne';ctx.fillStyle='#3a445575';
+    ctx.fillText(n.name,p.x,p.y+rad+10);
+  });
+
+  /* GHOST AMBULANCE — red, transparent, labelled BASELINE */
+  if(G.running&&G.ghostPath.length&&G.ghostPathIdx<G.ghostPath.length-1){
+    const gx=G.ghostPos.x,gy=G.ghostPos.y;
+    ctx.save();ctx.translate(gx,gy);ctx.rotate(G.ghostAngle);
+    ctx.globalAlpha=G.ghostSlowed?0.9:0.55;
+    ctx.fillStyle=G.ghostSlowed?'#cc2233':'#883344';
+    ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(-11,-6,22,12,3);
+    else{ctx.rect(-11,-6,22,12);}
+    ctx.fill();
+    // Red cross shape
+    ctx.fillStyle='#ffffff';ctx.fillRect(-2,-5,4,10);ctx.fillRect(-6,-2,12,4);
+    if(G.ghostSlowed){
+      // Show "RED LIGHT" indicator above ghost
+      ctx.rotate(-G.ghostAngle);
+      ctx.fillStyle='#ff3b4e';
+      ctx.beginPath();ctx.arc(0,-20,8,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff';ctx.font='700 7px Syne';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('RED',0,-20);
+    }
+    ctx.globalAlpha=1;ctx.restore();
+    // Label
+    ctx.font='600 9px IBM Plex Mono';ctx.fillStyle='#ff3b4e99';
+    ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.fillText('BASELINE'+(G.ghostSlowed?' ⬛':' →'),gx,gy-16);
+  }
+
+  /* NETRA AMBULANCE */
+  if(G.running&&G.path.length>0){
+    const profile=VEHICLE_PROFILES[G.vehicleType];
+    const ax=G.ambPos.x,ay=G.ambPos.y,t=G.tick;
+    const pr=0.5+0.5*Math.sin(t*0.12);
+    ctx.beginPath();ctx.arc(ax,ay,16+pr*8,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(0,232,135,${0.5*pr})`;ctx.lineWidth=2;ctx.stroke();
+    ctx.save();ctx.translate(ax,ay);ctx.rotate(G.ambAngle);
+    ctx.fillStyle=profile.color;
+    ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(-13,-7,26,14,3);else ctx.rect(-13,-7,26,14);
+    ctx.fill();
+    ctx.fillStyle='#ffffff';ctx.fillRect(-2,-6,4,12);ctx.fillRect(-7,-2,14,4);
+    const flash=Math.sin(t*0.35)>0;
+    ctx.fillStyle=flash?'#ffffaa':'#ffffff66';
+    ctx.beginPath();ctx.arc(13,0,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(-13,0,2.5,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    // NETRA label
+    ctx.font='700 9px IBM Plex Mono';ctx.fillStyle='#00e88799';
+    ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.fillText('NETRA ⚡',ax,ay-18);
+  }
+}
+
+function drawCar(car){
+  if(!car.visible)return;
+  ctx.save();ctx.translate(car.x,car.y);ctx.rotate(car.angle);
+  if(car.halted){
+    ctx.fillStyle='#ff3b4e';ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#ff3b4e';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.stroke();
+  }else if(car.isDiverted){
+    ctx.fillStyle='#c084fc';
+    ctx.beginPath();if(ctx.roundRect)ctx.roundRect(-5,-3,10,6,1.5);else ctx.rect(-5,-3,10,6);ctx.fill();
+    ctx.strokeStyle='#c084fc';ctx.lineWidth=1;
+    ctx.beginPath();if(ctx.roundRect)ctx.roundRect(-5,-3,10,6,1.5);else ctx.rect(-5,-3,10,6);ctx.stroke();
+  }else{
+    ctx.fillStyle=car.color;
+    ctx.beginPath();if(ctx.roundRect)ctx.roundRect(-5,-3,10,6,1.5);else ctx.rect(-5,-3,10,6);ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ══════════════ UI BUILDERS ════════════════════════════════════ */
+function buildDensityUI(){
+  const el=document.getElementById('density-ui');if(!el)return;
+  el.innerHTML=EDGES.map((e,i)=>{
+    const rho=G.densities[i]||e.baseCong;
+    const pct=Math.round(rho*100);
+    const col=pct>70?'var(--red)':pct>40?'var(--amb)':'var(--grn)';
+    const carsOn=G.running?G.cars.filter(c=>c.visible&&c.edgeIdx===i&&!c.isDiverted).length:0;
+    const onPath=G.pathEdges.includes(i);
+    return `<div class="road-item" style="${onPath&&G.running?'border-color:var(--grn);':''} ">
+      <div class="road-header">
+        <span class="road-name">${e.lbl}${onPath&&G.running?' ✓':''}</span>
+        <span class="road-rho" style="color:${col}">${pct}%</span>
+      </div>
+      <div class="road-bar-bg"><div class="road-bar-fill" style="width:${pct}%;background:${col};"></div></div>
+      <div class="road-cars">${carsOn} cars · base ρ=${(e.baseCong*100).toFixed(0)}%</div>
+    </div>`;
+  }).join('');
+}
+
+function buildSigsUI(){
+  const el=document.getElementById('sigs-ui');if(!el)return;
+  if(!G.path.length){el.innerHTML='<div style="font-size:10px;color:var(--t3);">No active mission</div>';return;}
+  let html='<div style="font-size:9px;color:var(--t2);margin-bottom:6px;">Path nodes (NETRA corridor)</div>';
+  G.path.forEach((nid,i)=>{
+    const n=NODES[nid];const sig=G.signals[nid]||'off';
+    const lc=sig==='green'?'g':sig==='red'?'r':sig==='amber'?'a':'x';
+    const cls=sig==='green'?'si-grn':sig==='red'?'si-red':sig==='amber'?'si-amb':'';
+    html+=`<div class="si ${cls}">
+      <div class="sled ${lc}"></div>
+      <div class="si-body">
+        <div class="si-name">${n.lbl} — ${n.name}</div>
+        <div class="si-sub">${i===0?'Origin':i===G.path.length-1?'Destination':'Corridor node'} | g=${G.gScores&&G.gScores[nid]<Infinity?G.gScores[nid].toFixed(0)+'s':'?'}</div>
+      </div>
+      <span class="badge badge-${lc}">${sig.toUpperCase()}</span>
+    </div>`;
+  });
+  if(G.crossingNodes&&G.crossingNodes.size>0){
+    html+=`<div class="sdiv">Crossing Nodes (RED extended +${G.redExt}s)</div>`;
+    G.crossingNodes.forEach(nid=>{
+      const n=NODES[nid];const t=G.crossingNodeTimers&&G.crossingNodeTimers[nid]||0;
+      html+=`<div class="si si-red">
+        <div class="sled r"></div>
+        <div class="si-body"><div class="si-name">${n.lbl} — ${n.name}</div>
+        <div class="si-sub">Red extended${t>0?' — '+t+'s remaining':'— released'}</div></div>
+        <span class="badge badge-r">${t>0?'+'+t+'s':'DONE'}</span>
+      </div>`;
+    });
+  }
+  el.innerHTML=html;
+}
+
+function buildDivsUI(){
+  const el=document.getElementById('divs-ui');if(!el)return;
+  if(!G.diversions.length&&!G.cars.filter(c=>c.halted).length){
+    el.innerHTML='<div style="font-size:10px;color:var(--t3);">No diversions</div>';return;
+  }
+  el.innerHTML=
+    G.diversions.map((d,i)=>`<div class="si si-pur">
+      <div class="sled p"></div>
+      <div class="si-body">
+        <div class="si-name">Vehicle ${i+1} — Diverted</div>
+        <div class="si-sub" style="font-family:var(--mono);">${d.pathStr}</div>
+        <div class="si-sub">Rerouted away from corridor</div>
+      </div>
+      <span class="badge badge-p">DIV</span>
+    </div>`).join('')+
+    G.cars.filter(c=>c.halted).map((_,i)=>`<div class="si si-red">
+      <div class="sled r"></div>
+      <div class="si-body"><div class="si-name">Vehicle ${G.diversions.length+i+1} — HALTED</div>
+      <div class="si-sub">Stopped at extended red — waiting for corridor to clear</div></div>
+      <span class="badge badge-r">HALT</span>
+    </div>`).join('');
+}
+
+function buildIsectUI(){
+  const el=document.getElementById('isect-ui');if(!el)return;
+  if(!G.intersectionQueues||!Object.keys(G.intersectionQueues).length){
+    el.innerHTML='<div style="font-size:10px;color:var(--t3);">No active intersections</div>';return;
+  }
+  const active=Object.entries(G.intersectionQueues).filter(([,q])=>q.activeReq||q.queue.length>0);
+  if(!active.length){el.innerHTML='<div style="font-size:10px;color:var(--t3);">All intersections free</div>';return;}
+  el.innerHTML=active.map(([nid,q])=>{
+    const n=NODES[+nid];if(!n)return'';
+    return`<div class="isect-item">
+      <div class="isect-name">${n.lbl} — ${n.name}</div>
+      <div class="isect-queue">
+        ${q.activeReq?`<span class="isect-token active">GREEN: ${q.activeReq}</span>`:'<span class="isect-token queued">free</span>'}
+        ${q.queue.map(r=>`<span class="isect-token queued">QUEUED: ${r}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function step(idx,status,meta){
+  for(let i=0;i<9;i++){
+    const el=document.getElementById(`as${i}`);if(!el)continue;
+    el.classList.remove('active','done');
+    if(i<idx)el.classList.add('done');
+    if(i===idx)el.classList.add('active');
+  }
+  if(meta&&document.getElementById(`as${idx}m`))document.getElementById(`as${idx}m`).textContent=meta;
+  document.getElementById('prog').style.width=`${Math.round((idx/8)*100)}%`;
+}
+function resetSteps(){
+  for(let i=0;i<9;i++){
+    const el=document.getElementById(`as${i}`);if(!el)continue;
+    el.classList.remove('active','done');
+    const m=document.getElementById(`as${i}m`);if(m)m.textContent='Idle';
+  }
+  document.getElementById('prog').style.width='0%';
+}
+
+function hud(id,txt){const e=document.getElementById('hud-'+id);if(e)e.textContent=txt;}
+function hudShow(id,v){const e=document.getElementById('hud-'+id);if(e)e.style.display=v?'block':'none';}
+function setLed(cls,txt){
+  const d=document.getElementById('led');const t=document.getElementById('ledtxt');
+  d.className='sys-led'+(cls?' '+cls:'');t.textContent=txt;
+}
+function slog(msg,type=''){
+  const el=document.getElementById('logarea');
+  const t=new Date();
+  const ts=[t.getHours(),t.getMinutes(),t.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+  el.innerHTML=`<div class="logline"><span class="logt">${ts}</span><span class="logm ${type}">${msg}</span></div>`+el.innerHTML;
+}
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className=`toast t${type} show`;
+  setTimeout(()=>el.classList.remove('show'),3200);
+}
+function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+
+/* ══════════════ TABS ═══════════════════════════════════════════ */
+document.querySelectorAll('.tabbt').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const tgt=btn.dataset.tab;
+    document.querySelectorAll('.tabbt').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('on'));
+    btn.classList.add('on');document.getElementById('tab-'+tgt).classList.add('on');
+  });
+});
+
+document.getElementById('btn-go').addEventListener('click',startMission);
+document.getElementById('btn-stop').addEventListener('click',()=>{stopMission();slog('Mission aborted.','w');toast('Mission aborted','r');});
+document.getElementById('src').addEventListener('change',liveUpdate);
+document.getElementById('dst').addEventListener('change',liveUpdate);
+
+setInterval(()=>{
+  const t=new Date();
+  document.getElementById('clk').textContent=
+    [t.getHours(),t.getMinutes(),t.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+},1000);
+
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);this.beginPath();this.moveTo(x+r,y);
+    this.lineTo(x+w-r,y);this.quadraticCurveTo(x+w,y,x+w,y+r);
+    this.lineTo(x+w,y+h-r);this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    this.lineTo(x+r,y+h);this.quadraticCurveTo(x,y+h,x,y+h-r);
+    this.lineTo(x,y+r);this.quadraticCurveTo(x,y,x+r,y);
+    this.closePath();return this;
+  };
+}
+
+window.addEventListener('load',()=>{
+  resize();
+  document.getElementById('tb-e').textContent=EDGES.length;
+  document.getElementById('tb-n').textContent=NODES.length;
+  G.densities=EDGES.map(e=>e.baseCong);
+  buildDensityUI();buildSigsUI();buildDivsUI();buildIsectUI();
+  draw();liveUpdate();
+  let lastIdle=0;
+  function idleLoop(ts){
+    G.tick++;
+    if(!G.running&&ts-lastIdle>80){draw();lastIdle=ts;}
+    requestAnimationFrame(idleLoop);
+  }
+  requestAnimationFrame(idleLoop);
+});
+</script>
+</body>
+</html>

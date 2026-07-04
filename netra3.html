@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NETRA — A* Green Corridor System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#070a0e;
+  --s1:#0d1117;
+  --s2:#131920;
+  --s3:#1a2230;
+  --border:#ffffff0c;
+  --border2:#ffffff18;
+  --red:#ff3b4e;
+  --red2:#ff3b4e22;
+  --amber:#ffb627;
+  --amber2:#ffb62722;
+  --green:#00e676;
+  --green2:#00e67622;
+  --blue:#00b4d8;
+  --blue2:#00b4d822;
+  --purple:#b388ff;
+  --text:#e8edf5;
+  --text2:#6b7a90;
+  --text3:#2e3a4a;
+  --font:'Syne',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden;}
+
+.app{display:grid;grid-template-columns:290px 1fr 310px;grid-template-rows:52px 1fr;height:100vh;}
+
+/* TOPBAR */
+.topbar{
+  grid-column:1/-1;display:flex;align-items:center;gap:14px;
+  padding:0 18px;background:var(--s1);
+  border-bottom:1px solid var(--border2);z-index:10;
+}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{
+  width:30px;height:30px;border-radius:6px;
+  background:linear-gradient(135deg,var(--red),#ff6b35);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:11px;color:#fff;letter-spacing:.5px;
+}
+.logo-title{font-weight:800;font-size:15px;letter-spacing:1px;}
+.logo-algo{
+  font-size:10px;font-weight:600;letter-spacing:1.5px;
+  color:var(--green);background:var(--green2);
+  padding:2px 8px;border-radius:4px;border:1px solid var(--green);
+  font-family:var(--mono);
+}
+.tb-sep{flex:1;}
+.tb-pill{
+  display:flex;align-items:center;gap:7px;
+  padding:4px 12px;border-radius:20px;
+  background:var(--s2);border:1px solid var(--border2);
+  font-size:11px;font-weight:600;
+}
+.dot{width:6px;height:6px;border-radius:50%;animation:blink 1.8s infinite;}
+.dot-green{background:var(--green);}
+.dot-red{background:var(--red);animation:blink .8s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.tb-clock{font-family:var(--mono);font-size:11px;color:var(--text2);}
+
+/* PANELS */
+.left-panel,.right-panel{
+  background:var(--s1);display:flex;flex-direction:column;overflow:hidden;
+}
+.left-panel{border-right:1px solid var(--border);}
+.right-panel{border-left:1px solid var(--border);}
+.ph{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  font-size:10px;font-weight:700;letter-spacing:1.5px;
+  color:var(--text2);text-transform:uppercase;
+}
+.pb{flex:1;overflow-y:auto;padding:12px 14px;}
+.pb::-webkit-scrollbar{width:3px;}
+.pb::-webkit-scrollbar-thumb{background:var(--border2);}
+
+/* CONTROLS */
+.fg{margin-bottom:12px;}
+.fl{font-size:10px;color:var(--text2);margin-bottom:5px;display:block;font-weight:600;letter-spacing:.3px;}
+.fi,.fs{
+  width:100%;padding:8px 11px;
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:7px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;
+}
+.fi:focus,.fs:focus{border-color:var(--red);}
+.fs{cursor:pointer;}
+.range-row{display:flex;align-items:center;gap:8px;}
+.fr{flex:1;accent-color:var(--red);cursor:pointer;}
+.frv{font-family:var(--mono);font-size:11px;color:var(--amber);min-width:38px;text-align:right;}
+
+.btn{
+  width:100%;padding:10px;border-radius:7px;border:none;
+  cursor:pointer;font-family:var(--font);font-size:12px;font-weight:700;
+  transition:all .15s;letter-spacing:.5px;
+}
+.btn-run{background:var(--red);color:#fff;}
+.btn-run:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.btn-run:disabled{background:var(--s3);color:var(--text2);cursor:not-allowed;transform:none;filter:none;}
+.btn-stop{background:var(--s2);color:var(--text);border:1px solid var(--border2);margin-top:7px;}
+.btn-stop:hover:not(:disabled){background:var(--s3);}
+.btn-stop:disabled{opacity:.4;cursor:not-allowed;}
+
+/* STAT GRID */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0;}
+.sc{
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:8px;padding:10px 9px;
+}
+.sc-l{font-size:9px;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;}
+.sc-v{font-size:22px;font-weight:700;font-family:var(--mono);line-height:1;}
+.sc-u{font-size:9px;color:var(--text2);margin-top:3px;}
+.c-r{color:var(--red);}
+.c-g{color:var(--green);}
+.c-a{color:var(--amber);}
+.c-b{color:var(--blue);}
+.c-p{color:var(--purple);}
+
+/* SECTION */
+.sdiv{
+  font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--text3);padding:8px 0 5px;border-top:1px solid var(--border);margin-top:4px 0;
+}
+
+/* SIGNAL LIST */
+.sig-item{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 9px;border-radius:7px;margin-bottom:5px;
+  background:var(--s2);border:1px solid var(--border);transition:all .3s;
+}
+.sig-item.sg-green{border-color:var(--green);background:var(--green2);}
+.sig-item.sg-red{border-color:var(--red);background:var(--red2);}
+.sig-item.sg-amber{border-color:var(--amber);background:var(--amber2);}
+.sl{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.sl-green{background:var(--green);box-shadow:0 0 8px var(--green);}
+.sl-red{background:var(--red);box-shadow:0 0 8px var(--red);}
+.sl-amber{background:var(--amber);}
+.sl-gray{background:var(--text3);}
+.si{flex:1;}
+.sn{font-size:11px;font-weight:700;}
+.sd{font-size:9px;color:var(--text2);margin-top:1px;}
+.sbadge{
+  font-size:9px;font-family:var(--mono);padding:2px 6px;
+  border-radius:4px;font-weight:600;
+}
+.b-g{background:var(--green2);color:var(--green);}
+.b-r{background:var(--red2);color:var(--red);}
+.b-a{background:var(--amber2);color:var(--amber);}
+.b-x{background:var(--s3);color:var(--text2);}
+
+/* ALGO STEPS */
+.as{
+  padding:9px 11px;border-left:2px solid var(--border2);
+  margin-bottom:7px;border-radius:0 7px 7px 0;
+  background:var(--s2);transition:all .3s;
+}
+.as.active{border-left-color:var(--amber);background:#ffb62710;}
+.as.done{border-left-color:var(--green);}
+.as.skip{border-left-color:var(--purple);background:#b388ff10;}
+.as-t{font-size:11px;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:6px;}
+.as-tag{
+  font-size:8px;font-family:var(--mono);padding:1px 5px;
+  border-radius:3px;font-weight:600;
+}
+.tag-astar{background:#b388ff22;color:var(--purple);}
+.tag-dijkstra{background:var(--blue2);color:var(--blue);}
+.tag-signal{background:var(--green2);color:var(--green);}
+.as-d{font-size:10px;color:var(--text2);line-height:1.5;}
+.as-m{font-size:9px;color:var(--text3);margin-top:3px;font-family:var(--mono);}
+
+/* DENSITY */
+.dr{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+.dl{font-size:10px;color:var(--text2);width:55px;flex-shrink:0;}
+.db{flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden;}
+.dbf{height:100%;border-radius:3px;transition:width .6s;}
+.dp{font-family:var(--mono);font-size:9px;color:var(--text3);width:28px;text-align:right;}
+
+/* LOG */
+.log-area{
+  flex:1;overflow-y:auto;padding:8px 12px;
+  font-family:var(--mono);font-size:9px;
+}
+.log-area::-webkit-scrollbar{width:3px;}
+.log-area::-webkit-scrollbar-thumb{background:var(--border2);}
+.le{padding:2px 0;border-bottom:1px solid #ffffff04;display:flex;gap:7px;}
+.lt{color:var(--text3);flex-shrink:0;}
+.lm{color:var(--text2);}
+.lm.info{color:var(--blue);}
+.lm.warn{color:var(--amber);}
+.lm.ok{color:var(--green);}
+.lm.err{color:var(--red);}
+.lm.astar{color:var(--purple);}
+
+/* MAP */
+.map-area{position:relative;overflow:hidden;background:#060a0d;}
+#mc{width:100%;height:100%;display:block;}
+.map-hud{
+  position:absolute;top:14px;left:14px;
+  display:flex;flex-direction:column;gap:7px;pointer-events:none;
+}
+.hud-badge{
+  background:var(--s1);border:1px solid var(--border2);
+  border-radius:7px;padding:6px 11px;font-size:11px;font-weight:700;
+  pointer-events:all;
+}
+.hud-path{
+  background:var(--s1);border:1px solid var(--green);
+  border-radius:7px;padding:5px 11px;font-size:10px;
+  color:var(--green);font-family:var(--mono);
+}
+.spd-box{
+  position:absolute;bottom:14px;left:14px;
+  background:var(--s1);border:1px solid var(--border2);
+  border-radius:9px;padding:9px 14px;
+  display:flex;align-items:baseline;gap:5px;
+}
+.spd-n{font-size:30px;font-weight:800;font-family:var(--mono);color:var(--blue);}
+.spd-u{font-size:11px;color:var(--text2);}
+.eta-box{
+  position:absolute;bottom:14px;right:14px;
+  background:var(--s1);border:1px solid var(--border2);
+  border-radius:9px;padding:9px 14px;text-align:right;
+}
+.eta-l{font-size:9px;color:var(--text2);letter-spacing:.8px;text-transform:uppercase;}
+.eta-v{font-size:20px;font-weight:800;font-family:var(--mono);color:var(--amber);}
+
+/* ALGO COMPARE BOX */
+.cmp-box{
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:8px;padding:10px;margin-bottom:10px;
+}
+.cmp-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.cmp-label{font-size:10px;color:var(--text2);font-weight:600;}
+.cmp-val{font-size:10px;font-family:var(--mono);}
+
+/* PROGRESS */
+.pgb{height:2px;background:var(--s3);border-radius:2px;overflow:hidden;margin-bottom:10px;}
+.pgbf{height:100%;background:linear-gradient(90deg,var(--red),var(--amber));transition:width .5s;}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%) translateY(70px);
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:9px;padding:9px 16px;font-size:12px;font-weight:700;
+  transition:transform .25s;z-index:100;pointer-events:none;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.tg{border-color:var(--green);color:var(--green);}
+.toast.tr{border-color:var(--red);color:var(--red);}
+.toast.ta{border-color:var(--amber);color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-icon">NT</div>
+    <span class="logo-title">NETRA</span>
+    <span class="logo-algo">A* CORRIDOR</span>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-pill">
+    <div class="dot dot-green" id="sys-dot"></div>
+    <span id="sys-txt">System Ready</span>
+  </div>
+  <div class="tb-clock" id="clock">--:--:--</div>
+</header>
+
+<!-- LEFT -->
+<aside class="left-panel">
+  <div class="ph">Mission Parameters</div>
+  <div class="pb">
+
+    <div class="fg">
+      <label class="fl">Emergency Vehicle</label>
+      <select class="fs" id="veh-type">
+        <option value="ambulance">🚑 Ambulance</option>
+        <option value="fire">🚒 Fire Engine</option>
+        <option value="police">🚔 Police Vehicle</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Source Node</label>
+      <select class="fs" id="src">
+        <option value="0">A — General Hospital</option>
+        <option value="1">B — Central Station</option>
+        <option value="2">C — West Market</option>
+        <option value="3">D — University</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Destination Node</label>
+      <select class="fs" id="dst">
+        <option value="5">F — Trauma Centre</option>
+        <option value="4">E — Airport</option>
+        <option value="6">G — City Hospital</option>
+        <option value="7">H — Police HQ</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Algorithm</label>
+      <select class="fs" id="algo-sel">
+        <option value="astar">A* (Heuristic + Cost)</option>
+        <option value="dijkstra">Dijkstra (Cost Only)</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Congestion Weight &alpha; = <span id="av">0.6</span></label>
+      <div class="range-row">
+        <input type="range" class="fr" id="alpha" min="0" max="2" step="0.1" value="0.6"/>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Heuristic Weight &epsilon; = <span id="ev">1.2</span></label>
+      <div class="range-row">
+        <input type="range" class="fr" id="epsilon" min="0.5" max="3" step="0.1" value="1.2"/>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Pre-clear Radius T = <span id="tv">160</span>m</label>
+      <div class="range-row">
+        <input type="range" class="fr" id="thresh" min="50" max="300" step="10" value="160"/>
+      </div>
+    </div>
+
+    <button class="btn btn-run" id="btn-run">▶ Activate Corridor</button>
+    <button class="btn btn-stop" id="btn-stop" disabled>■ Abort Mission</button>
+
+    <div class="sdiv" style="margin-top:10px;">Live Metrics</div>
+    <div class="sg">
+      <div class="sc"><div class="sc-l">Speed</div><div class="sc-v c-b" id="m-spd">0</div><div class="sc-u">km/h</div></div>
+      <div class="sc"><div class="sc-l">ETA</div><div class="sc-v c-a" id="m-eta">--</div><div class="sc-u">seconds</div></div>
+      <div class="sc"><div class="sc-l">Cleared</div><div class="sc-v c-g" id="m-clr">0</div><div class="sc-u">signals</div></div>
+      <div class="sc"><div class="sc-l">f(n) Cost</div><div class="sc-v c-p" id="m-fn">--</div><div class="sc-u">g+h</div></div>
+    </div>
+
+    <div class="sdiv">Algorithm Comparison</div>
+    <div class="cmp-box">
+      <div class="cmp-row"><span class="cmp-label">A* Path Cost</span><span class="cmp-val c-p" id="cmp-astar">--</span></div>
+      <div class="cmp-row"><span class="cmp-label">Dijkstra Path Cost</span><span class="cmp-val c-b" id="cmp-dijk">--</span></div>
+      <div class="cmp-row"><span class="cmp-label">Nodes Explored (A*)</span><span class="cmp-val c-g" id="cmp-exp">--</span></div>
+      <div class="cmp-row"><span class="cmp-label">Nodes Explored (D)</span><span class="cmp-val c-a" id="cmp-dexp">--</span></div>
+    </div>
+
+    <div class="sdiv">Traffic Density &rho;</div>
+    <div id="density-list"></div>
+
+    <div class="sdiv">Signal Corridor</div>
+    <div id="signal-list"></div>
+
+  </div>
+</aside>
+
+<!-- MAP -->
+<main class="map-area">
+  <canvas id="mc"></canvas>
+  <div class="map-hud">
+    <div class="hud-badge" id="phase-badge">Phase 0 — Idle</div>
+    <div class="hud-path" id="path-badge" style="display:none;"></div>
+  </div>
+  <div class="spd-box">
+    <span class="spd-n" id="spd-big">0</span>
+    <span class="spd-u">km/h</span>
+  </div>
+  <div class="eta-box">
+    <div class="eta-l">ETA</div>
+    <div class="eta-v" id="eta-big">--:--</div>
+  </div>
+</main>
+
+<!-- RIGHT -->
+<aside class="right-panel">
+  <div class="ph">A* Algorithm Steps</div>
+  <div class="pb" style="flex:0 0 auto;padding:12px;">
+    <div class="pgb"><div class="pgbf" id="prog" style="width:0%"></div></div>
+
+    <div class="as" id="st0">
+      <div class="as-t">1. Initialise Open/Closed Sets <span class="as-tag tag-astar">A*</span></div>
+      <div class="as-d">Open set = {S}. Closed = {}. g(S)=0, h(S)=euclidean(S,D)×ε. f(S)=g+h.</div>
+      <div class="as-m" id="st0m">Waiting...</div>
+    </div>
+
+    <div class="as" id="st1">
+      <div class="as-t">2. Density-Weighted Edges <span class="as-tag tag-astar">A*</span></div>
+      <div class="as-d">w'(u,v) = w(u,v)×(1+α·ρ). Higher density → heavier edge. Penalises congested corridors.</div>
+      <div class="as-m" id="st1m">Waiting...</div>
+    </div>
+
+    <div class="as" id="st2">
+      <div class="as-t">3. A* Main Loop <span class="as-tag tag-astar">A*</span></div>
+      <div class="as-d">Pop lowest f(n) from Open. If n=D → done. Else expand neighbours: g_new = g(n)+w'(n,v), h=ε·euclidean(v,D).</div>
+      <div class="as-m" id="st2m">Waiting...</div>
+    </div>
+
+    <div class="as" id="st3">
+      <div class="as-t">4. Path Reconstruction <span class="as-tag tag-astar">A*</span></div>
+      <div class="as-d">Backtrack parent[] from D→S. P* is guaranteed optimal if ε=1 (admissible). ε&gt;1 = weighted A* (faster, near-optimal).</div>
+      <div class="as-m" id="st3m">Waiting...</div>
+    </div>
+
+    <div class="as" id="st4">
+      <div class="as-t">5. Dijkstra Comparison <span class="as-tag tag-dijkstra">Dijkstra</span></div>
+      <div class="as-d">Run standard Dijkstra on same weights. Compare cost, nodes explored, and path vs A*. Shows efficiency gain of heuristic.</div>
+      <div class="as-m" id="st4m">Waiting...</div>
+    </div>
+
+    <div class="as" id="st5">
+      <div class="as-t">6. Rolling Green Corridor <span class="as-tag tag-signal">Signal</span></div>
+      <div class="as-d">For each n_i ∈ P*: if dist(EV, n_i) &lt; T → force GREEN. Cross-traffic held RED. Post-pass → restore normal cycle.</div>
+      <div class="as-m" id="st5m">Waiting...</div>
+    </div>
+
+    <div class="as" id="st6">
+      <div class="as-t">7. Mission Complete <span class="as-tag tag-signal">Signal</span></div>
+      <div class="as-d">EV reaches D. All signals restored. Metrics logged. Network returns to GNN-optimised baseline.</div>
+      <div class="as-m" id="st6m">Waiting...</div>
+    </div>
+  </div>
+
+  <div class="ph" style="border-top:1px solid var(--border);">System Log</div>
+  <div class="log-area" id="log">
+    <div class="le"><span class="lt">00:00:00</span><span class="lm info">NETRA A* Corridor System initialised.</span></div>
+  </div>
+</aside>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════ GRAPH DATA ═══════════════════════ */
+const NODES = [
+  {id:0,label:'A',name:'General Hospital', x:.13,y:.22,isSignal:true},
+  {id:1,label:'B',name:'Central Station',  x:.28,y:.14,isSignal:true},
+  {id:2,label:'C',name:'West Market',      x:.22,y:.58,isSignal:true},
+  {id:3,label:'D',name:'University',       x:.48,y:.18,isSignal:true},
+  {id:4,label:'E',name:'Airport',          x:.70,y:.10,isSignal:true},
+  {id:5,label:'F',name:'Trauma Centre',    x:.86,y:.44,isSignal:true},
+  {id:6,label:'G',name:'City Hospital',    x:.64,y:.72,isSignal:true},
+  {id:7,label:'H',name:'Police HQ',        x:.38,y:.82,isSignal:true},
+  {id:8,label:'I',name:'Tech Park',        x:.55,y:.46,isSignal:false},
+  {id:9,label:'J',name:'Central Square',  x:.80,y:.26,isSignal:false},
+];
+
+const EDGES = [
+  {u:0,v:1,d:2.1,s:50},{u:0,v:2,d:1.8,s:40},
+  {u:1,v:3,d:1.5,s:60},{u:1,v:9,d:3.2,s:70},
+  {u:2,v:7,d:2.0,s:40},{u:2,v:8,d:1.6,s:50},
+  {u:3,v:4,d:2.8,s:80},{u:3,v:8,d:1.2,s:60},
+  {u:3,v:9,d:2.0,s:70},{u:4,v:9,d:1.5,s:80},
+  {u:4,v:5,d:2.2,s:60},{u:5,v:9,d:1.8,s:60},
+  {u:5,v:6,d:2.5,s:50},{u:6,v:8,d:1.4,s:50},
+  {u:7,v:8,d:1.9,s:40},{u:8,v:9,d:1.7,s:60},
+  {u:9,v:5,d:1.8,s:70},
+];
+
+/* ═══════════════════════ STATE ═══════════════════════ */
+const S = {
+  running:false, path:[], pathIdx:0, interpP:0,
+  speed:0, eta:0, cleared:0, signals:{},
+  densities:{}, alpha:.6, epsilon:1.2, thresh:160,
+  src:0, dst:5, animT:0, ambPos:{x:0,y:0}, ambAngle:0,
+  startTime:null, fn:0,
+  astarExplored:0, dijkExplored:0,
+  astarCost:0, dijkCost:0,
+  openSet:[], closedSet:[],
+};
+
+/* ═══════════════════════ CANVAS ═══════════════════════ */
+const canvas = document.getElementById('mc');
+const ctx = canvas.getContext('2d');
+function resize(){
+  const r = canvas.parentElement.getBoundingClientRect();
+  canvas.width=r.width*devicePixelRatio; canvas.height=r.height*devicePixelRatio;
+  canvas.style.width=r.width+'px'; canvas.style.height=r.height+'px';
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+}
+window.addEventListener('resize',()=>{resize();draw();});
+resize();
+
+function npos(n){
+  const r=canvas.getBoundingClientRect();
+  return {x:n.x*r.width, y:n.y*r.height};
+}
+
+/* ═══════════════════════ GRAPH UTILS ═══════════════════════ */
+function buildAdj(){
+  const adj={};
+  NODES.forEach(n=>adj[n.id]=[]);
+  EDGES.forEach((e,i)=>{
+    adj[e.u].push({to:e.v,ei:i});
+    adj[e.v].push({to:e.u,ei:i});
+  });
+  return adj;
+}
+
+function edgeWeight(ei){
+  const e=EDGES[ei];
+  const base=(e.d/e.s)*3600;
+  const rho=(S.densities[`${e.u}-${e.v}`]||0);
+  return base*(1+S.alpha*rho);
+}
+
+/* Heuristic: weighted Euclidean distance scaled to time units */
+function heuristic(nid, dst){
+  const a=NODES[nid], b=NODES[dst];
+  const r=canvas.getBoundingClientRect();
+  const dx=(a.x-b.x)*r.width, dy=(a.y-b.y)*r.height;
+  const pxDist=Math.sqrt(dx*dx+dy*dy);
+  // Normalise: avg speed ~60km/h, scale pixels to km
+  const approxKm=pxDist/r.width*10;
+  return S.epsilon*(approxKm/60)*3600;
+}
+
+/* ─── A* ALGORITHM ─────────────────────────────────── */
+function astar(src, dst){
+  const g={}, parent={};
+  const f={};
+  NODES.forEach(n=>{g[n.id]=Infinity; f[n.id]=Infinity; parent[n.id]=null;});
+  g[src]=0;
+  f[src]=heuristic(src,dst);
+
+  // Min-heap simulation via sorted array
+  let open=[src];
+  const closed=new Set();
+  let explored=0;
+
+  while(open.length){
+    open.sort((a,b)=>f[a]-f[b]);
+    const cur=open.shift();
+    S.openSet=[...open];
+    S.closedSet=[...closed];
+
+    if(cur===dst){
+      // Reconstruct path
+      const path=[];
+      let c=dst;
+      while(c!==null){path.unshift(c);c=parent[c];}
+      return {path, cost:g[dst], explored};
+    }
+
+    closed.add(cur);
+    explored++;
+
+    const adj=buildAdj();
+    for(const {to,ei} of adj[cur]){
+      if(closed.has(to)) continue;
+      const newG=g[cur]+edgeWeight(ei);
+      if(newG<g[to]){
+        g[to]=newG;
+        f[to]=newG+heuristic(to,dst);
+        parent[to]=cur;
+        if(!open.includes(to)) open.push(to);
+      }
+    }
+  }
+  return {path:[], cost:Infinity, explored};
+}
+
+/* ─── DIJKSTRA (for comparison) ─────────────────────── */
+function dijkstra(src, dst){
+  const dist={}, parent={};
+  NODES.forEach(n=>{dist[n.id]=Infinity; parent[n.id]=null;});
+  dist[src]=0;
+  const Q=[[0,src]];
+  const adj=buildAdj();
+  let explored=0;
+
+  while(Q.length){
+    Q.sort((a,b)=>a[0]-b[0]);
+    const [d,u]=Q.shift();
+    if(d>dist[u]) continue;
+    explored++;
+    if(u===dst) break;
+    for(const {to,ei} of adj[u]){
+      const nd=d+edgeWeight(ei);
+      if(nd<dist[to]){
+        dist[to]=nd;
+        parent[to]=u;
+        Q.push([nd,to]);
+      }
+    }
+  }
+  const path=[];
+  let c=dst;
+  while(c!==null){path.unshift(c);c=parent[c];}
+  return {path, cost:dist[dst], explored};
+}
+
+/* ═══════════════════════ DRAW ═══════════════════════ */
+function onPath(u,v){
+  const p=S.path;
+  for(let i=0;i<p.length-1;i++)
+    if((p[i]===u&&p[i+1]===v)||(p[i]===v&&p[i+1]===u)) return true;
+  return false;
+}
+
+function draw(){
+  const r=canvas.getBoundingClientRect();
+  const W=r.width,H=r.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Subtle grid
+  ctx.strokeStyle='#ffffff03';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // Edges
+  EDGES.forEach((e,i)=>{
+    const a=npos(NODES[e.u]),b=npos(NODES[e.v]);
+    const rho=S.densities[`${e.u}-${e.v}`]||0;
+    const op=onPath(e.u,e.v);
+
+    if(op && S.running){
+      // Glow corridor line
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle='#00e67630';ctx.lineWidth=10;ctx.stroke();
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle='#00e676';ctx.lineWidth=2;
+      ctx.setLineDash([10,7]);ctx.stroke();ctx.setLineDash([]);
+    } else {
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      const r2=Math.floor(40+rho*80),g2=Math.floor(20+rho*20);
+      ctx.strokeStyle=`rgba(${r2+20},${g2},${g2},0.45)`;
+      ctx.lineWidth=1.5;ctx.stroke();
+    }
+
+    // Edge weight label
+    if(op && S.running){
+      const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      const w=edgeWeight(i).toFixed(1);
+      ctx.fillStyle='#00e67699';ctx.font=`500 8px 'IBM Plex Mono'`;
+      ctx.textAlign='center';ctx.fillText(w+'s',mx,my-6);
+    }
+  });
+
+  // A* open/closed set highlight (during computation phase)
+  if(S.running && S.openSet.length){
+    S.openSet.forEach(nid=>{
+      const p2=npos(NODES[nid]);
+      ctx.beginPath();ctx.arc(p2.x,p2.y,22,0,Math.PI*2);
+      ctx.strokeStyle='#b388ff44';ctx.lineWidth=1;ctx.stroke();
+    });
+    S.closedSet.forEach(nid=>{
+      const p2=npos(NODES[nid]);
+      ctx.beginPath();ctx.arc(p2.x,p2.y,20,0,Math.PI*2);
+      ctx.strokeStyle='#00b4d833';ctx.lineWidth=1;ctx.stroke();
+    });
+  }
+
+  // Nodes
+  NODES.forEach(n=>{
+    const p2=npos(n);
+    const op=S.path.includes(n.id);
+    const isSrc=n.id===S.src, isDst=n.id===S.dst;
+    const sig=S.signals[n.id]||'gray';
+    let fill='#131920', stroke='#ffffff15', rad=15;
+
+    if(isDst){fill='#ff3b4e22';stroke='#ff3b4e';rad=20;}
+    else if(isSrc){fill='#00e67622';stroke='#00e676';rad=20;}
+    else if(op&&S.running){
+      if(sig==='green'){fill='#00e67618';stroke='#00e676';}
+      else if(sig==='red'){fill='#ff3b4e18';stroke='#ff3b4e';}
+      else{fill='#ffb62718';stroke='#ffb627';}
+    }
+
+    // Outer glow for path nodes
+    if(op&&S.running){
+      const grd=ctx.createRadialGradient(p2.x,p2.y,rad,p2.x,p2.y,rad+14);
+      grd.addColorStop(0,stroke+'33');grd.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(p2.x,p2.y,rad+14,0,Math.PI*2);
+      ctx.fillStyle=grd;ctx.fill();
+    }
+
+    ctx.beginPath();ctx.arc(p2.x,p2.y,rad,0,Math.PI*2);
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke();
+
+    // f(n) label above for path nodes
+    if(op&&S.running&&S.fn){
+      ctx.fillStyle='#b388ffaa';ctx.font=`500 8px 'IBM Plex Mono'`;
+      ctx.textAlign='center';
+    }
+
+    // Signal dot
+    if(n.isSignal&&S.running&&op){
+      const sc=sig==='green'?'#00e676':sig==='red'?'#ff3b4e':'#ffb627';
+      ctx.beginPath();ctx.arc(p2.x+rad-3,p2.y-rad+3,4,0,Math.PI*2);
+      ctx.fillStyle=sc;ctx.fill();
+      // Signal glow
+      ctx.beginPath();ctx.arc(p2.x+rad-3,p2.y-rad+3,7,0,Math.PI*2);
+      ctx.fillStyle=sc+'33';ctx.fill();
+    }
+
+    // Label
+    ctx.fillStyle=op&&S.running?'#e8edf5':'#6b7a90';
+    ctx.font=`700 11px 'Syne'`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n.label,p2.x,p2.y);
+
+    // Name tag
+    ctx.fillStyle='#6b7a9088';ctx.font=`400 8px 'Syne'`;
+    ctx.fillText(n.name,p2.x,p2.y+rad+10);
+  });
+
+  // Ambulance
+  if(S.running&&S.path.length){
+    const ax=S.ambPos.x,ay=S.ambPos.y,ang=S.ambAngle;
+    const pulse=0.5+0.5*Math.sin(S.animT*.1);
+
+    // Pulse rings
+    [1,2].forEach(i=>{
+      ctx.beginPath();ctx.arc(ax,ay,14+pulse*6*i,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,59,78,${.25/i*pulse})`;ctx.lineWidth=1.5;ctx.stroke();
+    });
+
+    ctx.save();ctx.translate(ax,ay);ctx.rotate(ang);
+    ctx.fillStyle='#ff3b4e';
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(-11,-7,22,14,4);
+    else ctx.rect(-11,-7,22,14);
+    ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.fillRect(-2,-6,4,12);ctx.fillRect(-6,-2,12,4);
+    ctx.restore();
+  }
+}
+
+/* ═══════════════════════ UI BUILDERS ═══════════════════════ */
+function buildSignals(){
+  const el=document.getElementById('signal-list');
+  if(!S.path.length){el.innerHTML='<div style="font-size:10px;color:var(--text3);padding:4px;">No active mission</div>';return;}
+  el.innerHTML=S.path.map((nid,i)=>{
+    const n=NODES[nid],sig=S.signals[nid]||'gray';
+    const slc=sig==='green'?'sl-green':sig==='red'?'sl-red':sig==='amber'?'sl-amber':'sl-gray';
+    const bc=sig==='green'?'b-g':sig==='red'?'b-r':sig==='amber'?'b-a':'b-x';
+    const sc=sig==='green'?'sg-green':sig==='red'?'sg-red':sig==='amber'?'sg-amber':'';
+    const role=i===0?'Origin':i===S.path.length-1?'Dest':'Waypoint';
+    return `<div class="sig-item ${sc}">
+      <div class="sl ${slc}"></div>
+      <div class="si"><div class="sn">${n.label} — ${n.name}</div>
+      <div class="sd">${role}</div></div>
+      <span class="sbadge ${bc}">${sig.toUpperCase()}</span>
+    </div>`;
+  }).join('');
+}
+
+function buildDensity(){
+  const el=document.getElementById('density-list');
+  const pairs=[{u:0,v:1,l:'A→B'},{u:1,v:3,l:'B→D'},{u:3,v:4,l:'D→E'},
+               {u:4,v:5,l:'E→F'},{u:3,v:8,l:'D→I'},{u:8,v:9,l:'I→J'},{u:9,v:5,l:'J→F'}];
+  el.innerHTML=pairs.map(p=>{
+    const rho=S.densities[`${p.u}-${p.v}`]||0;
+    const pct=Math.round(rho*100);
+    const col=pct>70?'var(--red)':pct>40?'var(--amber)':'var(--green)';
+    return `<div class="dr">
+      <span class="dl">${p.l}</span>
+      <div class="db"><div class="dbf" style="width:${pct}%;background:${col};"></div></div>
+      <span class="dp">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function setStep(i,state,meta){
+  for(let j=0;j<7;j++){
+    const el=document.getElementById(`st${j}`);
+    el.classList.remove('active','done','skip');
+    if(j<i)el.classList.add('done');
+    if(j===i)el.classList.add(state==='skip'?'skip':'active');
+  }
+  if(meta) document.getElementById(`st${i}m`).textContent=meta;
+  document.getElementById('prog').style.width=`${Math.round((i/6)*100)}%`;
+}
+
+function addLog(msg,type=''){
+  const el=document.getElementById('log');
+  const t=new Date();
+  const ts=[t.getHours(),t.getMinutes(),t.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+  el.innerHTML=`<div class="le"><span class="lt">${ts}</span><span class="lm ${type}">${msg}</span></div>`+el.innerHTML;
+}
+
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className=`toast t${type} show`;
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+setInterval(()=>{
+  const t=new Date();
+  document.getElementById('clock').textContent=[t.getHours(),t.getMinutes(),t.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+},1000);
+
+/* ═══════════════════════ MISSION ═══════════════════════ */
+let raf,tick=0,interp=0;
+
+async function startMission(){
+  if(S.running)return;
+  S.src=+document.getElementById('src').value;
+  S.dst=+document.getElementById('dst').value;
+  S.alpha=+document.getElementById('alpha').value;
+  S.epsilon=+document.getElementById('epsilon').value;
+  S.thresh=+document.getElementById('thresh').value;
+  const algoSel=document.getElementById('algo-sel').value;
+
+  if(S.src===S.dst){toast('Source = Destination!','r');return;}
+
+  S.running=true;S.cleared=0;S.pathIdx=0;tick=0;interp=0;
+  S.openSet=[];S.closedSet=[];
+
+  document.getElementById('btn-run').disabled=true;
+  document.getElementById('btn-stop').disabled=false;
+  document.getElementById('sys-dot').className='dot dot-red';
+  document.getElementById('sys-txt').textContent='Mission Active';
+
+  // Randomise densities
+  EDGES.forEach(e=>{
+    const rho=Math.random()*.75+.05;
+    S.densities[`${e.u}-${e.v}`]=rho;
+    S.densities[`${e.v}-${e.u}`]=rho;
+  });
+  buildDensity();
+
+  document.getElementById('phase-badge').textContent='Phase 1 — Initialising A*';
+  document.getElementById('path-badge').style.display='block';
+  document.getElementById('path-badge').textContent='Computing optimal path...';
+
+  addLog(`Mission start. Algo: ${algoSel}, α=${S.alpha}, ε=${S.epsilon}`,'info');
+  setStep(0,'active',`Open={${NODES[S.src].label}}, g(${NODES[S.src].label})=0, h=${heuristic(S.src,S.dst).toFixed(1)}s`);
+  draw();
+  await delay(700);
+
+  setStep(1,'active',`Computing w'(u,v) = base×(1+${S.alpha}×ρ) for ${EDGES.length} edges`);
+  addLog(`Edge weights computed. α=${S.alpha}`);
+  await delay(600);
+
+  setStep(2,'active','A* expanding nodes by f(n)=g(n)+h(n)...');
+  draw();
+  await delay(800);
+
+  // Run A*
+  const aRes=astar(S.src,S.dst);
+  S.astarExplored=aRes.explored;
+  S.astarCost=aRes.cost;
+
+  setStep(3,'active',`P*=[${aRes.path.map(i=>NODES[i].label).join('→')}], cost=${aRes.cost.toFixed(1)}s`);
+  addLog(`A* path: [${aRes.path.map(i=>NODES[i].label).join(', ')}], cost=${aRes.cost.toFixed(1)}s, explored=${aRes.explored} nodes`,'astar');
+  await delay(700);
+
+  // Run Dijkstra for comparison
+  setStep(4,'active','Running Dijkstra on same weights for comparison...');
+  const dRes=dijkstra(S.src,S.dst);
+  S.dijkExplored=dRes.explored;
+  S.dijkCost=dRes.cost;
+  document.getElementById('cmp-astar').textContent=aRes.cost.toFixed(1)+'s';
+  document.getElementById('cmp-dijk').textContent=dRes.cost.toFixed(1)+'s';
+  document.getElementById('cmp-exp').textContent=aRes.explored;
+  document.getElementById('cmp-dexp').textContent=dRes.explored;
+  addLog(`Dijkstra: cost=${dRes.cost.toFixed(1)}s, explored=${dRes.explored} nodes`,'info');
+  addLog(`A* efficiency gain: ${dRes.explored-aRes.explored} fewer nodes explored`,'ok');
+  await delay(700);
+
+  if(!aRes.path.length||!aRes.path.includes(S.dst)){
+    addLog('No path found!','err'); toast('No path found','r');
+    stopMission(); return;
+  }
+
+  // Use selected algorithm's path
+  const usePath = algoSel==='astar' ? aRes.path : dRes.path;
+  S.path=usePath;
+  S.openSet=[];S.closedSet=[];
+
+  document.getElementById('m-nodes').textContent=usePath.length;
+
+  // Init signals
+  usePath.forEach((nid,i)=>{S.signals[nid]=i===0?'green':'red';});
+  buildSignals();
+
+  const sp=npos(NODES[usePath[0]]);
+  S.ambPos={...sp};S.startTime=Date.now();
+
+  setStep(5,'active',`Rolling corridor on ${usePath.length} nodes, T=${S.thresh}m`);
+  document.getElementById('phase-badge').textContent='Phase 3 — Corridor Active';
+  document.getElementById('path-badge').textContent=`P*: ${usePath.map(i=>NODES[i].label).join(' → ')}`;
+  draw();
+
+  addLog(`Corridor activated. Path: ${usePath.map(i=>NODES[i].label).join('→')}`,'ok');
+  toast('Green corridor activated','g');
+
+  raf=requestAnimationFrame(loop);
+}
+
+function loop(){
+  if(!S.running)return;
+  tick++;S.animT=tick;
+
+  const path=S.path,idx=S.pathIdx;
+  if(idx>=path.length-1){complete();return;}
+
+  const from=NODES[path[idx]],to=NODES[path[idx+1]];
+  const fp=npos(from),tp=npos(to);
+  const spd=.007+Math.random()*.003;
+  interp=Math.min(interp+spd,1);
+
+  S.ambPos.x=fp.x+(tp.x-fp.x)*interp;
+  S.ambPos.y=fp.y+(tp.y-fp.y)*interp;
+  S.ambAngle=Math.atan2(tp.y-fp.y,tp.x-fp.x);
+  S.speed=Math.round(50+Math.random()*30);
+  const remaining=(path.length-1-idx)*(1-interp);
+  S.eta=Math.round(remaining*20);
+
+  // f(n) display
+  S.fn=+(S.astarCost*(1-idx/(path.length-1))).toFixed(1);
+
+  document.getElementById('m-spd').textContent=S.speed;
+  document.getElementById('spd-big').textContent=S.speed;
+  document.getElementById('m-eta').textContent=S.eta;
+  document.getElementById('m-fn').textContent=S.fn;
+  const em=Math.floor(S.eta/60),es=S.eta%60;
+  document.getElementById('eta-big').textContent=`${em}:${String(es).padStart(2,'0')}`;
+  document.getElementById('m-clr').textContent=S.cleared;
+
+  // Rolling green corridor logic
+  if(interp>.5&&S.signals[path[idx+1]]!=='green'){
+    S.signals[path[idx+1]]='green';
+    if(idx+2<path.length) S.signals[path[idx+2]]='red';
+    S.cleared++;
+    const nn=NODES[path[idx+1]];
+    addLog(`Signal ${nn.label} (${nn.name}) → GREEN (EV within ${S.thresh}m)`,'ok');
+    setStep(5,'active',`Pre-cleared ${nn.label}. Signals cleared: ${S.cleared}`);
+  }
+
+  if(interp>=1){
+    const pn=NODES[path[idx]];
+    if(idx>0){
+      S.signals[path[idx]]='amber';
+      setTimeout(()=>{if(S.running)S.signals[path[idx]]='gray';buildSignals();},1000);
+      addLog(`Signal ${pn.label} → AMBER (restoring)`,'warn');
+    }
+    S.pathIdx++;interp=0;buildSignals();
+  }
+
+  draw();buildSignals();
+  raf=requestAnimationFrame(loop);
+}
+
+function complete(){
+  const elapsed=Math.round((Date.now()-S.startTime)/1000);
+  setStep(6,'active',`Done in ${elapsed}s. ${S.cleared} signals cleared. Cost=${S.astarCost.toFixed(1)}s`);
+  S.path.forEach(nid=>{S.signals[nid]='gray';});
+  buildSignals();
+  document.getElementById('phase-badge').textContent='✓ Mission Complete';
+  document.getElementById('path-badge').textContent=`Elapsed: ${elapsed}s`;
+  addLog(`Mission complete in ${elapsed}s. ${S.cleared} signals cleared.`,'ok');
+  toast('Destination reached — Mission Complete!','g');
+  document.getElementById('spd-big').textContent='0';
+  document.getElementById('m-spd').textContent='0';
+  document.getElementById('eta-big').textContent='00:00';
+  document.getElementById('sys-dot').className='dot dot-green';
+  document.getElementById('sys-txt').textContent='Mission Complete';
+  draw();
+  setTimeout(stopMission,3500);
+}
+
+function stopMission(){
+  S.running=false; cancelAnimationFrame(raf);
+  S.path=[];S.signals={};S.openSet=[];S.closedSet=[];
+  document.getElementById('btn-run').disabled=false;
+  document.getElementById('btn-stop').disabled=true;
+  document.getElementById('sys-dot').className='dot dot-green';
+  document.getElementById('sys-txt').textContent='System Ready';
+  document.getElementById('path-badge').style.display='none';
+  document.getElementById('phase-badge').textContent='Phase 0 — Idle';
+  buildSignals();draw();
+  addLog('System standby.','info');
+}
+
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+/* ═══════════════════════ BINDINGS ═══════════════════════ */
+document.getElementById('btn-run').addEventListener('click',startMission);
+document.getElementById('btn-stop').addEventListener('click',()=>{
+  stopMission(); addLog('Mission aborted by operator.','warn'); toast('Mission aborted','a');
+});
+['alpha','epsilon','thresh'].forEach(id=>{
+  const targets={'alpha':'av','epsilon':'ev','thresh':'tv'};
+  document.getElementById(id).addEventListener('input',e=>{
+    const v=parseFloat(e.target.value);
+    document.getElementById(targets[id]).textContent=id==='thresh'?v+'m':v.toFixed(1);
+  });
+});
+
+/* ═══════════════════════ INIT ═══════════════════════ */
+EDGES.forEach(e=>{
+  const rho=Math.random()*.6+.1;
+  S.densities[`${e.u}-${e.v}`]=rho;
+  S.densities[`${e.v}-${e.u}`]=rho;
+});
+buildDensity();buildSignals();draw();
+
+// Passive animation loop
+(function passive(){if(!S.running){S.animT++;draw();}requestAnimationFrame(passive);})();
+</script>
+</body>
+</html>
